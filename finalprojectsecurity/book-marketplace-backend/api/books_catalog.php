@@ -20,11 +20,8 @@ $crud = new Crud(
 );
 
 
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$authenticatedUser = current_authenticated_user($pdo);
-if ($method !== 'GET' && !$authenticatedUser) {
-    Response::error('Authentication required or session expired.', 401);
-}
+$method = $_SERVER['REQUEST_METHOD'];
+$authenticatedUser = require_authenticated_user($pdo);
 
 /**
  * Normalizes whatever the client sent for categories into a clean,
@@ -53,21 +50,17 @@ function fetch_category_ids(PDO $pdo, array $bookIds): array
         return [];
     }
 
-    try {
-        $placeholders = implode(', ', array_fill(0, count($bookIds), '?'));
-        $stmt = $pdo->prepare(
-            "SELECT `book_id`, `category_id` FROM `BOOK_CATEGORY_MAP` WHERE `book_id` IN ({$placeholders}) ORDER BY `category_id` ASC"
-        );
-        $stmt->execute($bookIds);
+    $placeholders = implode(', ', array_fill(0, count($bookIds), '?'));
+    $stmt = $pdo->prepare(
+        "SELECT `book_id`, `category_id` FROM `BOOK_CATEGORY_MAP` WHERE `book_id` IN ({$placeholders}) ORDER BY `category_id` ASC"
+    );
+    $stmt->execute($bookIds);
 
-        $map = [];
-        foreach ($stmt->fetchAll() as $row) {
-            $map[(int) $row['book_id']][] = (int) $row['category_id'];
-        }
-        return $map;
-    } catch (Throwable $e) {
-        return [];
+    $map = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $map[(int) $row['book_id']][] = (int) $row['category_id'];
     }
+    return $map;
 }
 
 /** Replaces the BOOK_CATEGORY_MAP rows for one book with $categoryIds. */

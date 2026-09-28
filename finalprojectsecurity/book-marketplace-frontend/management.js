@@ -2,11 +2,12 @@
 function librowseApiBase() {
     if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname || '127.0.0.1';
-    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    if (host.includes('vercel.app') || window.location.port === '' || window.location.port === '80' || window.location.port === '443') {
-        return `${window.location.origin}/api`;
+    const port = window.location.port;
+    if (port === '8000') {
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        return `${protocol}//${host}:8000/api`;
     }
-    return `${protocol}//${host}:8000/api`;
+    return '/api';
 }
 const MANAGEMENT_API_BASE = librowseApiBase();
 

@@ -11,11 +11,12 @@
 function librowseApiBase() {
     if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname || '127.0.0.1';
-    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    if (host.includes('vercel.app') || window.location.port === '' || window.location.port === '80' || window.location.port === '443') {
-        return `${window.location.origin}/api`;
+    const port = window.location.port;
+    if (port === '8000') {
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        return `${protocol}//${host}:8000/api`;
     }
-    return `${protocol}//${host}:8000/api`;
+    return '/api';
 }
 const API_BASE = librowseApiBase();
 
@@ -153,10 +154,17 @@ function requireAuthenticatedCustomer() {
     }
 
 
-    if (currentUser.role !== "Customer" && currentUser.role !== "Admin") {
-        alert("This feature is for Customer accounts. Staff users should use the Staff Dashboard.");
-        window.location.href = "staff.html";
+    if (currentUser.role !== "Customer") {
+
+        alert(
+            "This page currently supports Customer accounts only."
+        );
+
+        window.location.href =
+            "login.html";
+
         return false;
+
     }
 
 
@@ -256,14 +264,10 @@ async function apiRequest(endpoint, options = {}) {
 
 
         if (response.status === 401) {
-            const hadToken = !!sessionStorage.getItem(SESSION_TOKEN_KEY);
             if (window.librowseAuth) window.librowseAuth.clearSession();
             else { sessionStorage.removeItem(SESSION_TOKEN_KEY); sessionStorage.removeItem(SESSION_USER_KEY); }
-            if (hadToken) {
-                window.location.replace("login.html");
-                throw new Error("Your session has expired. Please sign in again.");
-            }
-            throw new Error("Authentication required.");
+            window.location.replace("login.html");
+            throw new Error("Your session has expired. Please sign in again.");
         }
 
         /* response.ok = success */
@@ -363,14 +367,14 @@ async function loadBooks() {
         if (bookList) {
             bookList.innerHTML = `<tr><td colspan="10">Loading books...</td></tr>`;
         }
-        const [listingsRes, catalogRes, usersRes] = await Promise.all([
+        const results = await Promise.all([
             apiRequest("user_books.php"),
             apiRequest("books_catalog.php"),
-            apiRequest("user.php").catch(() => [])
+            apiRequest("user.php")
         ]);
-        bookListings = Array.isArray(listingsRes) ? listingsRes : [];
-        booksCatalog = Array.isArray(catalogRes) ? catalogRes : [];
-        users = Array.isArray(usersRes) ? usersRes : [];
+        bookListings = results[0];
+        booksCatalog = results[1];
+        users = results[2];
         bookMap = {};
         userMap = {};
         inventoryMap = {};
@@ -1853,15 +1857,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     loadCurrentUser();
-
-    const isCustomerActionPage = !!document.getElementById("list-book-form") ||
-                                 !!document.getElementById("transaction-list") ||
-                                 !!document.getElementById("refund-form") ||
-                                 !!document.getElementById("report-form");
-
-    if (isCustomerActionPage) {
-        if (!requireAuthenticatedCustomer()) return;
-    }
+    if (!requireAuthenticatedCustomer()) return;
 
     updateAuthStatusUI();
     applyCurrentUserToForms();

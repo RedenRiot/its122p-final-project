@@ -3,11 +3,12 @@
 function librowseApiBase() {
     if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname || '127.0.0.1';
-    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-    if (host.includes('vercel.app') || window.location.port === '' || window.location.port === '80' || window.location.port === '443') {
-        return `${window.location.origin}/api`;
+    const port = window.location.port;
+    if (port === '8000') {
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        return `${protocol}//${host}:8000/api`;
     }
-    return `${protocol}//${host}:8000/api`;
+    return '/api';
 }
 const API_BASE = librowseApiBase();
 const SESSION_TOKEN_KEY = "librowseSessionToken";
@@ -173,7 +174,7 @@ async function clearCurrentUser() {
                 cache: "no-store"
             });
         }
-    } catch (_) { }
+    } catch (_) {}
     sessionStorage.removeItem(SESSION_TOKEN_KEY);
     sessionStorage.removeItem(SESSION_USER_KEY);
     localStorage.removeItem(SESSION_USER_KEY);
@@ -207,22 +208,16 @@ async function handleLogin(event) {
             cache: "no-store",
             body: JSON.stringify({ identifier, password })
         });
-        const text = await response.text();
-        let data = {};
-        try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text }; }
-        if (!response.ok) {
-            const msg = (typeof data.error === 'string' ? data.error : (data.details || (typeof data.error === 'object' ? JSON.stringify(data.error) : 'Unable to sign in.')));
-            throw new Error(msg);
-        }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Unable to sign in.");
         saveCurrentUser(data.user, data.token);
         const destination = data.user.role === "Admin" ? "admin.html" : data.user.role === "Staff" ? "staff.html" : "index.html";
         showMessage(`Welcome back, ${data.user.username}! Redirecting...`, "success");
         setTimeout(() => window.location.replace(destination), 250);
     } catch (error) {
-        let detail = error.message || "Unable to sign in.";
-        if (error instanceof TypeError) {
-            detail = `Unable to reach ${API_BASE}. Check that the PHP API is running and that this page was opened over HTTP/HTTPS (not file://).`;
-        }
+        const detail = error instanceof TypeError
+            ? `Unable to reach ${API_BASE}. Check that the PHP API is running and that this page was opened over HTTP/HTTPS (not file://).`
+            : error.message;
         showMessage(`Unable to sign in: ${detail}`, "error");
     } finally {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector("span").textContent = "Sign In"; }
