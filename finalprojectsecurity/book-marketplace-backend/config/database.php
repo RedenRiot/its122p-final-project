@@ -38,14 +38,14 @@ $pdoOptions = [
 ];
 
 if ($dbSsl) {
-    // Setting MYSQL_ATTR_SSL_CA is what actually initiates TLS in PHP PDO.
-    // Try common CA bundle locations across Linux distros used by Vercel.
+    // Use the TiDB CA cert bundled in this repo first, then fall back to
+    // common system CA bundle paths across Linux distros used by Vercel.
     $caBundles = [
-        '/etc/ssl/certs/ca-certificates.crt',     // Debian / Ubuntu
-        '/etc/pki/tls/certs/ca-bundle.crt',        // Amazon Linux / CentOS / RHEL
+        __DIR__ . '/isrgrootx1.pem',               // TiDB Cloud CA — bundled in repo
+        '/etc/ssl/certs/ca-certificates.crt',       // Debian / Ubuntu
+        '/etc/pki/tls/certs/ca-bundle.crt',         // Amazon Linux / CentOS / RHEL
         '/etc/ssl/ca-bundle.pem',                   // OpenSUSE
-        '/usr/local/share/certs/ca-root-nss.crt',  // FreeBSD
-        '/dev/null',                                // last resort: initiates TLS, skips CA check
+        '/dev/null',                                 // last resort: initiates TLS, skips CA check
     ];
     foreach ($caBundles as $bundle) {
         if (file_exists($bundle)) {
