@@ -192,7 +192,7 @@ async function clearCurrentUser() {
    3 attempts max. On the 3rd failure the button turns grey and the account
    is locked. Admin must set status back to Active to unlock.
    ────────────────────────────────────────────────────────────────────────── */
-const MAX_LOGIN_ATTEMPTS = 3;
+const MAX_LOGIN_ATTEMPTS = 4;
 
 function _attemptsKey(identifier) {
     return "librowseLoginAttempts_" + identifier.toLowerCase().trim();

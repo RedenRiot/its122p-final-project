@@ -1932,3 +1932,25 @@ button.btn-clear:hover { background: linear-gradient(135deg,#475569,#334155); bo
     .dashboard-cards { grid-template-columns: 1fr 1fr; gap: 10px; }
     .dashboard-card-value { font-size: 28px; }
 }
+
+/* ── CUSTOMER DASHBOARD SUMMARY CARDS ───────────────────────────────────── */
+.dashboard-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px;
+    margin: 24px 0 32px;
+}
+.dashboard-card {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 14px;
+    padding: 22px 20px 18px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: transform 0.18s, box-shadow 0.18s;
+}
+.dashboard-card:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.10); }
+.dashboard-card h3 { font-size: 13px; font-weight: 600; color: var(--text-gray, #64748b); margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.dashboard-stat { font-size: 36px; font-weight: 800; color: var(--primary, #6366f1); margin: 0 0 4px; line-height: 1; }
+.dashboard-stat-label { font-size: 12px; color: var(--text-gray, #64748b); margin: 0 0 6px; }
+.dashboard-stat-sub { font-size: 12px; color: var(--text-gray, #94a3b8); margin: 0; min-height: 16px; }
