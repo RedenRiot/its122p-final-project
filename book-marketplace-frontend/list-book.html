@@ -26,139 +26,76 @@
     </div>
 </header>
 <main>
-<!-- LIST A BOOK -->
-        <section id="list-book">
+    <section id="list-book">
+        <h2>List a Book</h2>
+        <p>Add one of your books to the marketplace.</p>
+        <p class="required-note"><span class="required-star">*</span> Required fields</p>
 
-            <h2>List a Book</h2>
+        <form id="list-book-form" novalidate>
 
-            <p>
-                Add one of your books to the marketplace.
-            </p>
+            <label for="book-title">Book Title <span class="required-star">*</span></label>
+            <input type="text" id="book-title" name="title" required placeholder="Enter book title">
+            <span class="field-error" id="err-book-title"></span>
 
+            <label for="book-author">Book Author <span class="required-star">*</span></label>
+            <input type="text" id="book-author" name="author" required placeholder="Enter author name">
+            <span class="field-error" id="err-book-author"></span>
 
-            <!-- Form creates a BOOKS_CATALOG entry, then a USER_BOOKS listing tied to the logged-in seller -->
-            <form id="list-book-form">
+            <label for="book-isbn">ISBN <span class="required-star">*</span></label>
+            <input type="text" id="book-isbn" name="isbn" required
+                placeholder="Enter 10 or 13 digit ISBN (numbers only)"
+                maxlength="13" inputmode="numeric" autocomplete="off">
+            <span class="field-hint">Enter exactly 10 or 13 digits. No letters, spaces, or hyphens.</span>
+            <span class="field-error" id="err-book-isbn"></span>
 
+            <fieldset id="book-category-group" class="checkbox-group">
+                <legend>Categories (select one or more) <span class="required-star">*</span></legend>
+                <div id="book-category-options">
+                    <p class="checkbox-group-empty">Loading categories...</p>
+                </div>
+            </fieldset>
+            <span class="field-error" id="err-book-category"></span>
 
-                <label for="book-title">
-                    Book Title:
-                </label>
+            <label for="listing-type">Listing Type <span class="required-star">*</span></label>
+            <select id="listing-type" name="listing_type" required>
+                <option value="">Select Listing Type</option>
+                <option value="For_sale">For Sale</option>
+                <option value="For_trade">For Trade</option>
+                <option value="Both">Both</option>
+            </select>
+            <span class="field-error" id="err-listing-type"></span>
 
-                <input type="text" id="book-title" name="title" required>
-
-
-                <label for="book-author">
-                    Book Author:
-                </label>
-
-                <input type="text" id="book-author" name="author" required>
-
-
-                <label for="book-isbn">
-                    ISBN:
-                </label>
-
-                <input type="text" id="book-isbn" name="isbn" required>
-
-
-                <fieldset id="book-category-group" class="checkbox-group">
-
-                    <legend>
-                        Categories (select one or more):
-                    </legend>
-
-                    <div id="book-category-options">
-
-                        <p class="checkbox-group-empty">
-                            Loading categories...
-                        </p>
-
-                    </div>
-
-                </fieldset>
-
-
-                <label for="listing-type">
-                    Listing Type:
-                </label>
-
-                <select id="listing-type" name="listing_type" required>
-
-                    <option value="">
-                        Select Listing Type
-                    </option>
-
-                    <option value="For_sale">
-                        For Sale
-                    </option>
-
-                    <option value="For_trade">
-                        For Trade
-                    </option>
-
-                    <option value="Both">
-                        Both
-                    </option>
-
-                </select>
-
-
-                <label for="price">
-                    Price:
-                </label>
-
-                <input type="number" id="price" name="price" step="0.01" min="0">
-
-
-                <label for="book-condition">
-                    Book Condition:
-                </label>
-
-                <select id="book-condition" name="condition" required>
-
-                    <option value="">
-                        Select Condition
-                    </option>
-
-                    <option value="New">
-                        New
-                    </option>
-
-                    <option value="Good">
-                        Good
-                    </option>
-
-                    <option value="Acceptable">
-                        Acceptable
-                    </option>
-
-                </select>
-
-
-                <button type="submit">
-                    List Book
-                </button>
-
-            </form>
-
-
-            <!-- Shows the listing that was just created (populated by JavaScript) -->
-            <div id="new-listing-result" style="display: none;">
-
-                <h3>
-                    Your Book Has Been Listed
-                </h3>
-
-                <table class="detail-table">
-
-                    <tbody id="new-listing-details">
-                    </tbody>
-
-                </table>
-
+            <label for="price">Price <span class="price-currency-label">₱</span></label>
+            <div class="price-input-wrapper">
+                <span class="price-prefix">₱</span>
+                <input type="text" id="price" name="price"
+                    placeholder="e.g. 500" inputmode="numeric" maxlength="4" autocomplete="off">
             </div>
+            <span class="field-hint">Numbers only, max ₱9999. Leave empty for trade-only listings.</span>
+            <span class="field-error" id="err-price"></span>
 
-        </section>
+            <label for="book-condition">Book Condition <span class="required-star">*</span></label>
+            <select id="book-condition" name="condition" required>
+                <option value="">Select Condition</option>
+                <option value="New">New</option>
+                <option value="Good">Good</option>
+                <option value="Acceptable">Acceptable</option>
+            </select>
+            <span class="field-error" id="err-book-condition"></span>
+
+            <div class="form-button-row">
+                <button type="submit" id="list-book-submit">List Book</button>
+                <button type="button" id="list-book-clear" class="btn-clear">Clear</button>
+            </div>
+        </form>
+
+        <div id="new-listing-result" style="display:none;">
+            <h3>Your Book Has Been Listed</h3>
+            <table class="detail-table">
+                <tbody id="new-listing-details"></tbody>
+            </table>
+        </div>
+    </section>
 </main>
 <footer>
     <p>Librowse Book Exchange</p>
@@ -284,14 +221,13 @@
         var clearBtn = document.getElementById('list-book-clear');
 
         if (form && submitBtn) {
+            /* Validation gate only. The POST is performed by script.js
+               (submitBookListing), so this handler must not submit anything. */
             form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                if (!validateForm()) return;
-                setProcessing(submitBtn, true);
-                var fakeEvent = { preventDefault: function () {} };
-                Promise.resolve(submitBookListing(fakeEvent))
-                    .then(function () { setProcessing(submitBtn, false); })
-                    .catch(function () { setProcessing(submitBtn, false); });
+                if (!validateForm()) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation(); /* keep script.js from submitting invalid data */
+                }
             }, true);
         }
 

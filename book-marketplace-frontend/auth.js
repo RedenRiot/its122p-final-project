@@ -189,10 +189,8 @@ async function clearCurrentUser() {
  * @param {Event} event
  */
 /* ── RATE LIMITING ─────────────────────────────────────────────────────────
-   Track failed login attempts per identifier in sessionStorage.
-   On the 4th failed attempt the button turns grey and is permanently
-   disabled. The backend also locks the account after 4 failures.
-   Only an Admin can unlock the account.
+   3 attempts max. On the 3rd failure the button turns grey and the account
+   is locked. Admin must set status back to Active to unlock.
    ────────────────────────────────────────────────────────────────────────── */
 const MAX_LOGIN_ATTEMPTS = 3;
 
@@ -319,6 +317,7 @@ async function handleLogin(event) {
         }
     }
 }
+
 /* ==========================================================================
    REGISTRATION HANDLER
    ========================================================================== */
@@ -353,7 +352,7 @@ async function handleRegister(event) {
         if (!response.ok) throw new Error(data.error || "Registration failed.");
         saveCurrentUser(data.user, data.token);
         showMessage("Account created successfully! Redirecting...", "success");
-        setTimeout(() => window.location.replace("index.html"), 250);
+        setTimeout(() => window.location.replace("transactions.html"), 250);
     } catch (error) {
         showMessage(`Registration failed: ${error.message}`, "error");
     } finally {
@@ -387,7 +386,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (link) {
                 const role = String(data.user.role || '').toLowerCase();
                 link.href = role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'transactions.html';
-                link.textContent = role === 'admin' || role === 'staff' ? 'Open Management Dashboard' : 'Go to Dashboard';
+                link.textContent = role === 'admin' || role === 'staff' ? 'Open Management Dashboard' : 'Go to Marketplace';
             }
         } catch (_) { await clearCurrentUser(); }
     }
@@ -399,7 +398,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     document.getElementById("login-form")?.addEventListener("submit", handleLogin);
-    checkLockedOnLoad(); /* restore locked state on page reload */
+    checkLockedOnLoad();
     document.getElementById("register-form")?.addEventListener("submit", handleRegister);
 
     document.querySelectorAll(".toggle-password-btn").forEach(button => button.addEventListener("click", () => {

@@ -18,7 +18,7 @@
     document.getElementById('welcomeTitle').textContent = `Welcome back, ${user.username}!`;
     document.getElementById('roleDisplay').textContent = `Opening ${String(user.role || '').toLowerCase()} dashboard…`;
     const role = String(user.role || '').toLowerCase();
-    window.location.replace(role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'customer-dashboard.html');
+    window.location.replace(role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'transactions.html');
 })();
 </script>
 </body>

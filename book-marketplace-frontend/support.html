@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <title>Refund & Report - Librowse</title>
+    <title>Refund &amp; Report - Librowse</title>
     <script src="session.js"></script>
 </head>
 <body>
@@ -26,150 +26,68 @@
     </div>
 </header>
 <main>
-<!-- REFUND REQUEST -->
-        <section id="refund">
+    <section id="refund">
+        <h2>Request a Refund</h2>
+        <p>Submit a refund request for an eligible transaction.</p>
+        <p class="required-note"><span class="required-star">*</span> Required fields</p>
+        <form id="refund-form" novalidate>
+            <!-- Customer ID hidden: filled automatically from session -->
+            <input type="hidden" id="customer-id" name="customer_id">
 
-            <h2>Request a Refund</h2>
+            <label for="refund-transaction-id">Transaction ID <span class="required-star">*</span></label>
+            <input type="number" id="refund-transaction-id" name="transaction_id" required placeholder="Enter your Transaction ID">
+            <span class="field-error" id="err-refund-tx"></span>
 
-            <p>
-                Submit a refund request for an eligible transaction.
-            </p>
+            <label for="refund-reason">Reason for Refund <span class="required-star">*</span></label>
+            <textarea id="refund-reason" name="reason" rows="5" required placeholder="Please describe the reason for your refund request…"></textarea>
+            <span class="field-error" id="err-refund-reason"></span>
 
+            <div class="form-button-row">
+                <button type="submit" id="refund-submit">Submit Refund Request</button>
+                <button type="button" id="refund-clear" class="btn-clear">Clear</button>
+            </div>
+        </form>
+    </section>
 
-            <!-- Form follows REFUND_REQUEST schema -->
-            <form id="refund-form">
+    <section id="report">
+        <h2>Submit a Report</h2>
+        <p>Submit a report, form, or feedback to Staff and Administration.</p>
+        <p class="required-note"><span class="required-star">*</span> Required fields</p>
+        <form id="report-form" novalidate>
+            <!-- User ID hidden: filled automatically from session -->
+            <input type="hidden" id="submitted-by" name="submitted_by_id">
 
+            <label for="report-category">Report Category <span class="required-star">*</span></label>
+            <select id="report-category" name="report_category" required>
+                <option value="">Select Report Category</option>
+                <option value="Verification_Form">Verification Form</option>
+                <option value="Seller_Application">Seller Application</option>
+                <option value="User_Violation">User Violation</option>
+                <option value="Listing_Dispute">Listing Dispute</option>
+                <option value="General_Feedback">General Feedback</option>
+            </select>
+            <span class="field-error" id="err-report-category"></span>
 
-                <label for="refund-transaction-id">
-                    Transaction ID:
-                </label>
+            <label for="related-entity">Related To <span class="required-star">*</span></label>
+            <select id="related-entity" name="related_entity_type" required>
+                <option value="">Select Type</option>
+                <option value="User">User</option>
+                <option value="Book_Listing">Book Listing</option>
+                <option value="Transaction">Transaction</option>
+                <option value="None">None</option>
+            </select>
+            <span class="field-error" id="err-related-entity"></span>
 
-                <input type="number" id="refund-transaction-id" name="transaction_id" required>
+            <label for="report-details">Report Details <span class="required-star">*</span></label>
+            <textarea id="report-details" name="form_data" rows="5" required placeholder="Please describe your report in detail…"></textarea>
+            <span class="field-error" id="err-report-details"></span>
 
-
-                <label for="customer-id">
-                    Customer ID:
-                </label>
-
-                <input type="number" id="customer-id" name="customer_id" required>
-
-
-                <label for="refund-reason">
-                    Reason for Refund:
-                </label>
-
-                <textarea id="refund-reason" name="reason" rows="5" required></textarea>
-
-
-                <button type="submit">
-                    Submit Refund Request
-                </button>
-
-            </form>
-
-        </section>
-
-
-        <!-- REPORT -->
-        <section id="report">
-
-            <h2>Submit a Report</h2>
-
-            <p>
-                Submit a report, form, or feedback to Staff and Administration.
-            </p>
-
-
-            <!-- Form uses report categories from reports.php -->
-            <form id="report-form">
-
-
-                <label for="submitted-by">
-                    User ID:
-                </label>
-
-                <input type="number" id="submitted-by" name="submitted_by_id" required>
-
-
-                <label for="report-category">
-                    Report Category:
-                </label>
-
-                <select id="report-category" name="report_category" required>
-
-                    <option value="">
-                        Select Report Category
-                    </option>
-
-                    <option value="Verification_Form">
-                        Verification Form
-                    </option>
-
-                    <option value="Seller_Application">
-                        Seller Application
-                    </option>
-
-                    <option value="User_Violation">
-                        User Violation
-                    </option>
-
-                    <option value="Listing_Dispute">
-                        Listing Dispute
-                    </option>
-
-                    <option value="General_Feedback">
-                        General Feedback
-                    </option>
-
-                </select>
-
-
-                <label for="related-entity">
-                    Related To:
-                </label>
-
-                <select id="related-entity" name="related_entity_type" required>
-
-                    <option value="">
-                        Select Type
-                    </option>
-
-                    <option value="User">
-                        User
-                    </option>
-
-                    <option value="Book_Listing">
-                        Book Listing
-                    </option>
-
-                    <option value="Transaction">
-                        Transaction
-                    </option>
-
-                    <option value="None">
-                        None
-                    </option>
-
-                </select>
-
-
-                <label for="report-details">
-                    Report Details:
-                </label>
-
-                <textarea id="report-details" name="form_data" rows="5" required></textarea>
-
-
-                <button type="submit">
-                    Submit Report
-                </button>
-
-            </form>
-
-        </section>
-
-
-    </main>
+            <div class="form-button-row">
+                <button type="submit" id="report-submit">Submit Report</button>
+                <button type="button" id="report-clear" class="btn-clear">Clear</button>
+            </div>
+        </form>
+    </section>
 </main>
 <footer>
     <p>Librowse Book Exchange</p>
@@ -251,13 +169,12 @@
         }
 
         if (refundForm && refundSubmit) {
+            /* Validation gate only. The POST is performed by script.js (submitRefund). */
             refundForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                if (!validateRefundForm()) return;
-                setProcessing(refundSubmit, true, 'Submit Refund Request');
-                Promise.resolve(submitRefund({ preventDefault: function(){} }))
-                    .then(function(){ setProcessing(refundSubmit,false,'Submit Refund Request'); })
-                    .catch(function(){ setProcessing(refundSubmit,false,'Submit Refund Request'); });
+                if (!validateRefundForm()) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
             }, true);
         }
 
@@ -271,13 +188,12 @@
         }
 
         if (reportForm && reportSubmit) {
+            /* Validation gate only. The POST is performed by script.js (submitReport). */
             reportForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                if (!validateReportForm()) return;
-                setProcessing(reportSubmit, true, 'Submit Report');
-                Promise.resolve(submitReport({ preventDefault: function(){} }))
-                    .then(function(){ setProcessing(reportSubmit,false,'Submit Report'); })
-                    .catch(function(){ setProcessing(reportSubmit,false,'Submit Report'); });
+                if (!validateReportForm()) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
             }, true);
         }
 
