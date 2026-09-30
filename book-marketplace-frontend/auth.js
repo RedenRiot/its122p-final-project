@@ -194,7 +194,7 @@ async function clearCurrentUser() {
    disabled. The backend also locks the account after 4 failures.
    Only an Admin can unlock the account.
    ────────────────────────────────────────────────────────────────────────── */
-const MAX_LOGIN_ATTEMPTS = 4;
+const MAX_LOGIN_ATTEMPTS = 3;
 
 function _attemptsKey(identifier) {
     return "librowseLoginAttempts_" + identifier.toLowerCase().trim();
@@ -300,7 +300,7 @@ async function handleLogin(event) {
             ? "admin.html"
             : data.user.role === "Staff"
             ? "staff.html"
-            : "customer-dashboard.html";
+            : "transactions.html";
         showMessage("Welcome back, " + data.user.username + "! Redirecting...", "success");
         setTimeout(() => window.location.replace(destination), 250);
 
@@ -386,7 +386,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const link = document.getElementById("session-continue-link");
             if (link) {
                 const role = String(data.user.role || '').toLowerCase();
-                link.href = role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'customer-dashboard.html';
+                link.href = role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'transactions.html';
                 link.textContent = role === 'admin' || role === 'staff' ? 'Open Management Dashboard' : 'Go to Dashboard';
             }
         } catch (_) { await clearCurrentUser(); }

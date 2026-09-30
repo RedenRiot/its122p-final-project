@@ -112,7 +112,7 @@ try {
             $totalAttempts = (int) $countStmt->fetchColumn();
 
             /* On 4th failure — lock the account */
-            if ($totalAttempts >= 4) {
+            if ($totalAttempts >= 3) {
                 $pdo->prepare(
                     "UPDATE `USER` SET status = 'Locked' WHERE user_id = :uid"
                 )->execute(['uid' => (int) $user['user_id']]);
