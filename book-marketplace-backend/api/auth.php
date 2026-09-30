@@ -40,6 +40,16 @@ try {
             Response::error('Username/email and password are required.', 422);
         }
 
+        /* ── Auto-create LOGIN_ATTEMPTS table if not yet present ─────────── */
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS `LOGIN_ATTEMPTS` (
+                `attempt_id`   INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                `user_id`      INT UNSIGNED NOT NULL,
+                `attempted_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX `idx_la_user` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+        );
+
         // MySQL native prepared statements do not reliably allow the same
         // named placeholder to appear more than once in a statement.
         // Use two parameters for the username/email comparison.
@@ -54,7 +64,23 @@ try {
             'email_identifier' => $identifier,
         ]);
         $user = $stmt->fetch();
+
+        /* Unknown user — generic error (do not reveal whether account exists) */
         if (!$user) Response::error('Invalid username/email or password.', 401);
+
+        /* Already locked by a previous lockout */
+        if ($user['status'] === 'Locked') {
+            Response::error(
+                'Your account has been locked due to too many failed login attempts. ' .
+                'Please contact an Administrator to unlock your account.',
+                403
+            );
+        }
+
+        /* Other non-active statuses (Suspended, Banned, Pending Verification) */
+        if ($user['status'] !== 'Active') {
+            Response::error('This account is not active and cannot sign in.', 403);
+        }
 
         $hash = (string) $user['password_hash'];
         $valid = $hash !== '' && password_verify($password, $hash);
@@ -73,15 +99,43 @@ try {
             $valid = true;
         }
 
-        if (!$valid) Response::error('Invalid username/email or password.', 401);
-        if ($user['status'] !== 'Active') Response::error('This account is not active and cannot sign in.', 403);
+        if (!$valid) {
+            /* ── Record failed attempt ─────────────────────────────────────── */
+            $pdo->prepare(
+                'INSERT INTO `LOGIN_ATTEMPTS` (user_id, attempted_at) VALUES (:uid, UTC_TIMESTAMP())'
+            )->execute(['uid' => (int) $user['user_id']]);
+
+            $countStmt = $pdo->prepare(
+                'SELECT COUNT(*) FROM `LOGIN_ATTEMPTS` WHERE user_id = :uid'
+            );
+            $countStmt->execute(['uid' => (int) $user['user_id']]);
+            $totalAttempts = (int) $countStmt->fetchColumn();
+
+            /* On 4th failure — lock the account */
+            if ($totalAttempts >= 4) {
+                $pdo->prepare(
+                    "UPDATE `USER` SET status = 'Locked' WHERE user_id = :uid"
+                )->execute(['uid' => (int) $user['user_id']]);
+                Response::error(
+                    'Your account has been locked after too many failed login attempts. ' .
+                    'Please contact an Administrator to unlock your account.',
+                    403
+                );
+            }
+
+            Response::error('Invalid username/email or password.', 401);
+        }
+
+        /* ── Success: clear attempt log and issue token ────────────────────── */
+        $pdo->prepare('DELETE FROM `LOGIN_ATTEMPTS` WHERE user_id = :uid')
+            ->execute(['uid' => (int) $user['user_id']]);
 
         $token = issue_auth_token($user);
         Response::json([
             'authenticated' => true,
-            'token' => $token,
-            'expires_in' => LIBROWSE_SESSION_TTL,
-            'user' => public_user($user),
+            'token'         => $token,
+            'expires_in'    => LIBROWSE_SESSION_TTL,
+            'user'          => public_user($user),
         ]);
     }
 
