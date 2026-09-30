@@ -12,6 +12,8 @@
  */
 function dispatch_crud_request(Crud $crud, string $primaryKeyName): void
 {
+    global $pdo; /* bring the $pdo connection into function scope */
+
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization');
