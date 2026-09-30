@@ -1744,6 +1744,38 @@ footer p:first-child {
     transform: none;
 }
 
+/* Rate-limit lock state — button turns grey when account is locked */
+.auth-submit-btn.btn-locked {
+    background: #94a3b8 !important;
+    background-image: none !important;
+    opacity: 1;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+    border: 2px solid #64748b;
+    color: #1e293b;
+}
+.auth-submit-btn.btn-locked span {
+    color: #1e293b;
+    font-weight: 700;
+}
+.auth-message-locked {
+    background: #fef2f2 !important;
+    border: 1.5px solid #fca5a5 !important;
+    border-radius: 10px;
+    padding: 14px 16px !important;
+    color: #991b1b !important;
+    font-size: 13px;
+    line-height: 1.6;
+    display: block !important;
+}
+.auth-message-locked strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 14px;
+    color: #7f1d1d;
+}
+
 /* Already signed-in session banner */
 .session-active-card {
     background: linear-gradient(135deg, rgba(239, 246, 255, 0.95), rgba(245, 243, 255, 0.95));

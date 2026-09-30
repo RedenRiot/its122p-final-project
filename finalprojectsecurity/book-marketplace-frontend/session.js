@@ -60,7 +60,7 @@
         if (!user) return null;
         const role = String(user.role || '').toLowerCase();
         if (!allowed.includes(role)) {
-            window.location.replace(role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'index.html');
+            window.location.replace(role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'customer-dashboard.html');
             return null;
         }
         return user;

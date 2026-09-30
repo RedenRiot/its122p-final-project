@@ -188,17 +188,87 @@ async function clearCurrentUser() {
  * Processes Customer login form submission
  * @param {Event} event
  */
+/* ── RATE LIMITING ─────────────────────────────────────────────────────────
+   Track failed login attempts per identifier in sessionStorage.
+   On the 4th failed attempt the button turns grey and is permanently
+   disabled. The backend also locks the account after 4 failures.
+   Only an Admin can unlock the account.
+   ────────────────────────────────────────────────────────────────────────── */
+const MAX_LOGIN_ATTEMPTS = 4;
+
+function _attemptsKey(identifier) {
+    return "librowseLoginAttempts_" + identifier.toLowerCase().trim();
+}
+function getLoginAttempts(identifier) {
+    try { return parseInt(sessionStorage.getItem(_attemptsKey(identifier)) || "0", 10); }
+    catch (_) { return 0; }
+}
+function incrementLoginAttempts(identifier) {
+    const next = getLoginAttempts(identifier) + 1;
+    try { sessionStorage.setItem(_attemptsKey(identifier), String(next)); } catch (_) {}
+    return next;
+}
+function resetLoginAttempts(identifier) {
+    try { sessionStorage.removeItem(_attemptsKey(identifier)); } catch (_) {}
+}
+
+function applyLockedState(submitBtn, messageEl) {
+    if (!submitBtn) return;
+    submitBtn.disabled = true;
+    submitBtn.classList.add("btn-locked");
+    const span = submitBtn.querySelector("span");
+    if (span) span.textContent = "Account Locked";
+    if (messageEl) {
+        messageEl.className = "auth-message auth-message-locked";
+        messageEl.innerHTML =
+            "<strong>Account Locked</strong>" +
+            "Your account has been locked after too many failed login attempts. " +
+            "Please contact an <strong>Administrator</strong> to unlock your account.";
+        messageEl.style.display = "block";
+    }
+}
+
+function checkLockedOnLoad() {
+    const submitBtn = document.getElementById("login-submit-btn");
+    const messageEl = document.getElementById("auth-message");
+    try {
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (key && key.startsWith("librowseLoginAttempts_")) {
+                if (parseInt(sessionStorage.getItem(key) || "0", 10) >= MAX_LOGIN_ATTEMPTS) {
+                    applyLockedState(submitBtn, messageEl);
+                    return;
+                }
+            }
+        }
+    } catch (_) {}
+}
+
 async function handleLogin(event) {
     event.preventDefault();
     const identifier = document.getElementById("login-identifier")?.value.trim() || "";
-    const password = document.getElementById("login-password")?.value || "";
-    const submitBtn = document.getElementById("login-submit-btn");
+    const password   = document.getElementById("login-password")?.value || "";
+    const submitBtn  = document.getElementById("login-submit-btn");
+    const messageEl  = document.getElementById("auth-message");
+
+    if (submitBtn && submitBtn.classList.contains("btn-locked")) {
+        applyLockedState(submitBtn, messageEl);
+        return;
+    }
+    if (identifier && getLoginAttempts(identifier) >= MAX_LOGIN_ATTEMPTS) {
+        applyLockedState(submitBtn, messageEl);
+        return;
+    }
 
     if (!identifier || !password) {
         showMessage("Please enter both your email/username and password.", "error");
         return;
     }
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.querySelector("span").textContent = "Signing in..."; }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.querySelector("span").textContent = "Signing in...";
+    }
     showMessage("Authenticating with Librowse...", "info");
 
     try {
@@ -209,21 +279,46 @@ async function handleLogin(event) {
             body: JSON.stringify({ identifier, password })
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Unable to sign in.");
+
+        if (!response.ok) {
+            const attempts  = incrementLoginAttempts(identifier);
+            const remaining = MAX_LOGIN_ATTEMPTS - attempts;
+            if (attempts >= MAX_LOGIN_ATTEMPTS) {
+                applyLockedState(submitBtn, messageEl);
+            } else {
+                const base = data.error || "Invalid username/email or password.";
+                const warn = " Warning: " + remaining + " attempt" + (remaining === 1 ? "" : "s") + " remaining before your account is locked.";
+                showMessage(base + warn, "error");
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector("span").textContent = "Sign In"; }
+            }
+            return;
+        }
+
+        resetLoginAttempts(identifier);
         saveCurrentUser(data.user, data.token);
-        const destination = data.user.role === "Admin" ? "admin.html" : data.user.role === "Staff" ? "staff.html" : "index.html";
-        showMessage(`Welcome back, ${data.user.username}! Redirecting...`, "success");
+        const destination = data.user.role === "Admin"
+            ? "admin.html"
+            : data.user.role === "Staff"
+            ? "staff.html"
+            : "customer-dashboard.html";
+        showMessage("Welcome back, " + data.user.username + "! Redirecting...", "success");
         setTimeout(() => window.location.replace(destination), 250);
+
     } catch (error) {
-        const detail = error instanceof TypeError
-            ? `Unable to reach ${API_BASE}. Check that the PHP API is running and that this page was opened over HTTP/HTTPS (not file://).`
-            : error.message;
-        showMessage(`Unable to sign in: ${detail}`, "error");
-    } finally {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector("span").textContent = "Sign In"; }
+        const attempts  = incrementLoginAttempts(identifier);
+        const remaining = MAX_LOGIN_ATTEMPTS - attempts;
+        if (attempts >= MAX_LOGIN_ATTEMPTS) {
+            applyLockedState(submitBtn, messageEl);
+        } else {
+            const detail = error instanceof TypeError
+                ? "Unable to reach " + API_BASE + ". Check that the PHP API is running and that this page was opened over HTTP/HTTPS (not file://)."
+                : error.message;
+            const warn = " Warning: " + remaining + " attempt" + (remaining === 1 ? "" : "s") + " remaining before your account is locked.";
+            showMessage("Unable to sign in: " + detail + warn, "error");
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector("span").textContent = "Sign In"; }
+        }
     }
 }
-
 /* ==========================================================================
    REGISTRATION HANDLER
    ========================================================================== */
@@ -304,6 +399,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     document.getElementById("login-form")?.addEventListener("submit", handleLogin);
+    checkLockedOnLoad(); /* restore locked state on page reload */
     document.getElementById("register-form")?.addEventListener("submit", handleRegister);
 
     document.querySelectorAll(".toggle-password-btn").forEach(button => button.addEventListener("click", () => {
