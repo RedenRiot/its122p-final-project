@@ -1,13 +1,36 @@
 <?php
 declare(strict_types=1);
 
+// Kill HTML error output immediately — all errors must surface as JSON.
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+error_reporting(E_ALL);
+
 /**
- * Local-development CORS and preflight handling must run before the database
- * bootstrap. Otherwise a failed DB connection can prevent CORS headers from
- * reaching the browser and surface only as a generic NetworkError.
+ * Catch PHP fatal errors (which bypass try/catch) and return JSON
+ * so the frontend never receives an HTML string it can't parse.
+ */
+register_shutdown_function(function (): void {
+    $err = error_get_last();
+    if ($err !== null && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+        }
+        echo json_encode([
+            'error'   => 'Server error',
+            'details' => $err['message'] . ' in ' . $err['file'] . ':' . $err['line'],
+        ]);
+    }
+});
+
+/**
+ * CORS — allow localhost for dev and any *.vercel.app for prod.
  */
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if ($origin !== '' && preg_match('#^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?$#i', $origin)) {
+$allowedOriginPattern = '#^https?://(?:localhost|127\.0\.0\.1|[^/]+\.vercel\.app)(?::\d+)?$#i';
+
+if ($origin !== '' && preg_match($allowedOriginPattern, $origin)) {
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Vary: Origin');
 }

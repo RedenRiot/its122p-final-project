@@ -1,11 +1,47 @@
 <?php
 /**
  * Database connection (PDO / MySQL).
- * Reads credentials from environment variables.
- *   DB_HOST=127.0.0.1  DB_PORT=3306
- *   DB_NAME=book_marketplace  DB_USER=root  DB_PASS=
+ *
+ * Reads credentials from environment variables or .env / .env.local file.
+ *
+ *   DB_HOST=127.0.0.1
+ *   DB_PORT=3306
+ *   DB_NAME=book_marketplace
+ *   DB_USER=root
+ *   DB_PASS=
+ *   DB_SSL=true   ← set to "true" on TiDB Cloud / any TLS-required host
  */
-function get_env_or(string $key, string $default): string {
+
+// Helper to load .env / .env.local if present
+function load_env_file_if_exists(string $path): void
+{
+    if (!file_exists($path) || !is_readable($path)) return;
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if ($lines === false) return;
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) continue;
+        if (strpos($line, '=') !== false) {
+            [$k, $v] = explode('=', $line, 2);
+            $k = trim($k);
+            $v = trim($v, " \t\n\r\0\x0B\"'");
+            if (getenv($k) === false) {
+                putenv("{$k}={$v}");
+                $_ENV[$k] = $v;
+                $_SERVER[$k] = $v;
+            }
+        }
+    }
+}
+
+// Check for local env files in backend root or project root
+load_env_file_if_exists(__DIR__ . '/../.env');
+load_env_file_if_exists(__DIR__ . '/../.env.local');
+load_env_file_if_exists(dirname(__DIR__, 2) . '/.env');
+load_env_file_if_exists(dirname(__DIR__, 2) . '/.env.local');
+
+function get_env_or(string $key, string $default): string
+{
     $value = getenv($key);
     return ($value === false || $value === '') ? $default : $value;
 }
@@ -15,21 +51,43 @@ $dbPort = get_env_or('DB_PORT', '3306');
 $dbName = get_env_or('DB_NAME', 'book_marketplace');
 $dbUser = get_env_or('DB_USER', 'root');
 $dbPass = get_env_or('DB_PASS', '');
+$dbSsl  = strtolower(get_env_or('DB_SSL', 'false')) === 'true' || str_contains($dbHost, 'tidbcloud.com');
 
+// DSN — TLS is forced via MYSQL_ATTR_SSL_CA below.
 $dsn = "mysql:host={$dbHost};port={$dbPort};dbname={$dbName};charset=utf8mb4";
+
+$pdoOptions = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+    PDO::ATTR_TIMEOUT            => 10,
+];
+
+if ($dbSsl) {
+    $caBundles = [
+        __DIR__ . '/isrgrootx1.pem',               // TiDB Cloud CA — bundled in repo
+        '/etc/ssl/certs/ca-certificates.crt',       // Debian / Ubuntu
+        '/etc/pki/tls/certs/ca-bundle.crt',         // Amazon Linux / CentOS / RHEL
+        '/etc/ssl/ca-bundle.pem',                   // OpenSUSE
+        '/dev/null',                                 // last resort fallback
+    ];
+    foreach ($caBundles as $bundle) {
+        if (file_exists($bundle)) {
+            $pdoOptions[PDO::MYSQL_ATTR_SSL_CA] = $bundle;
+            break;
+        }
+    }
+    $pdoOptions[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+}
 
 $pdo = null;
 
 try {
-    $pdo = new PDO($dsn, $dbUser, $dbPass, [
-        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES   => false,
-        PDO::ATTR_TIMEOUT            => 5,
-    ]);
+    $pdo = new PDO($dsn, $dbUser, $dbPass, $pdoOptions);
 } catch (PDOException $e) {
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    if ($origin !== '' && preg_match('#^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?$#i', $origin)) {
+    $allowedOriginPattern = '#^https?://(?:localhost|127\.0\.0\.1|[^/]+\.vercel\.app)(?::\d+)?$#i';
+    if ($origin !== '' && preg_match($allowedOriginPattern, $origin)) {
         header('Access-Control-Allow-Origin: ' . $origin);
         header('Vary: Origin');
     }
@@ -38,7 +96,7 @@ try {
     http_response_code(500);
     header('Content-Type: application/json');
     echo json_encode([
-        'error'   => 'Database connection failed.',
+        'error'   => 'Database connection failed',
         'details' => $e->getMessage(),
     ]);
     exit;

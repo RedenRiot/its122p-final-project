@@ -1,2 +1,2 @@
 <?php
-require __DIR__ . '/../finalprojectsecurity/book-marketplace-backend/api/user.php';
+require __DIR__ . '/../book-marketplace-backend/api/user.php';
