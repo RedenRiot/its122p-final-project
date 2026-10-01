@@ -2,12 +2,19 @@
 /**
  * Database connection (PDO / MySQL).
  *
+<<<<<<< HEAD
  * Reads credentials from environment variables or .env / .env.local file.
+=======
+ * Reads credentials from environment variables so real credentials never
+ * live in source control. Copy .env.example to .env (or set real env vars
+ * on your server) before running.
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
  *
  *   DB_HOST=127.0.0.1
  *   DB_PORT=3306
  *   DB_NAME=book_marketplace
  *   DB_USER=root
+<<<<<<< HEAD
  *   DB_PASS=
  *   DB_SSL=true   ← set to "true" on TiDB Cloud / any TLS-required host
  */
@@ -40,6 +47,12 @@ load_env_file_if_exists(__DIR__ . '/../.env.local');
 load_env_file_if_exists(dirname(__DIR__, 2) . '/.env');
 load_env_file_if_exists(dirname(__DIR__, 2) . '/.env.local');
 
+=======
+ *   DB_PASS=secret
+ *   DB_SSL=true   ← set to "true" on TiDB Cloud / any TLS-required host
+ */
+
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
 function get_env_or(string $key, string $default): string
 {
     $value = getenv($key);
@@ -51,9 +64,15 @@ $dbPort = get_env_or('DB_PORT', '3306');
 $dbName = get_env_or('DB_NAME', 'book_marketplace');
 $dbUser = get_env_or('DB_USER', 'root');
 $dbPass = get_env_or('DB_PASS', '');
+<<<<<<< HEAD
 $dbSsl  = strtolower(get_env_or('DB_SSL', 'false')) === 'true' || str_contains($dbHost, 'tidbcloud.com');
 
 // DSN — TLS is forced via MYSQL_ATTR_SSL_CA below.
+=======
+$dbSsl = strtolower(get_env_or('DB_SSL', 'false')) === 'true';
+
+// DSN — no ssl-mode here; PHP PDO MySQL ignores it. TLS is forced via MYSQL_ATTR_SSL_CA below.
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
 $dsn = "mysql:host={$dbHost};port={$dbPort};dbname={$dbName};charset=utf8mb4";
 
 $pdoOptions = [
@@ -64,12 +83,21 @@ $pdoOptions = [
 ];
 
 if ($dbSsl) {
+<<<<<<< HEAD
+=======
+    // Use the TiDB CA cert bundled in this repo first, then fall back to
+    // common system CA bundle paths across Linux distros used by Vercel.
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     $caBundles = [
         __DIR__ . '/isrgrootx1.pem',               // TiDB Cloud CA — bundled in repo
         '/etc/ssl/certs/ca-certificates.crt',       // Debian / Ubuntu
         '/etc/pki/tls/certs/ca-bundle.crt',         // Amazon Linux / CentOS / RHEL
         '/etc/ssl/ca-bundle.pem',                   // OpenSUSE
+<<<<<<< HEAD
         '/dev/null',                                 // last resort fallback
+=======
+        '/dev/null',                                 // last resort: initiates TLS, skips CA check
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     ];
     foreach ($caBundles as $bundle) {
         if (file_exists($bundle)) {
@@ -80,6 +108,7 @@ if ($dbSsl) {
     $pdoOptions[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
 }
 
+<<<<<<< HEAD
 $pdo = null;
 
 try {
@@ -93,6 +122,11 @@ try {
     }
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization, Cache-Control');
+=======
+try {
+    $pdo = new PDO($dsn, $dbUser, $dbPass, $pdoOptions);
+} catch (PDOException $e) {
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     http_response_code(500);
     header('Content-Type: application/json');
     echo json_encode([
@@ -100,4 +134,8 @@ try {
         'details' => $e->getMessage(),
     ]);
     exit;
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3

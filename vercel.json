@@ -7,6 +7,7 @@
     }
   },
   "rewrites": [
+<<<<<<< HEAD
     {
       "source": "/",
       "destination": "/book-marketplace-frontend/index.html"
@@ -15,5 +16,10 @@
       "source": "/((?!api/).*)",
       "destination": "/book-marketplace-frontend/$1"
     }
+=======
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/", "destination": "/book-marketplace-frontend/index.html" },
+    { "source": "/((?!api/).*)", "destination": "/book-marketplace-frontend/$1" }
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
   ]
 }

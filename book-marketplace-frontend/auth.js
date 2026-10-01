@@ -3,9 +3,16 @@
 function librowseApiBase() {
     if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname || '127.0.0.1';
+<<<<<<< HEAD
     const isLocal = host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:';
     if (isLocal) {
         return 'http://127.0.0.1:8000/api';
+=======
+    const port = window.location.port;
+    if (port === '8000') {
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        return `${protocol}//${host}:8000/api`;
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     }
     return '/api';
 }
@@ -187,17 +194,97 @@ async function clearCurrentUser() {
  * Processes Customer login form submission
  * @param {Event} event
  */
+<<<<<<< HEAD
 async function handleLogin(event) {
     event.preventDefault();
     const identifier = document.getElementById("login-identifier")?.value.trim() || "";
     const password = document.getElementById("login-password")?.value || "";
     const submitBtn = document.getElementById("login-submit-btn");
+=======
+/* ── RATE LIMITING ─────────────────────────────────────────────────────────
+   3 attempts max. On the 3rd failure the button turns grey and the account
+   is locked. Admin must set status back to Active to unlock.
+   ────────────────────────────────────────────────────────────────────────── */
+const MAX_LOGIN_ATTEMPTS = 4;
+
+function _attemptsKey(identifier) {
+    return "librowseLoginAttempts_" + identifier.toLowerCase().trim();
+}
+function getLoginAttempts(identifier) {
+    try { return parseInt(sessionStorage.getItem(_attemptsKey(identifier)) || "0", 10); }
+    catch (_) { return 0; }
+}
+function incrementLoginAttempts(identifier) {
+    const next = getLoginAttempts(identifier) + 1;
+    try { sessionStorage.setItem(_attemptsKey(identifier), String(next)); } catch (_) {}
+    return next;
+}
+function resetLoginAttempts(identifier) {
+    try { sessionStorage.removeItem(_attemptsKey(identifier)); } catch (_) {}
+}
+
+function applyLockedState(submitBtn, messageEl) {
+    if (!submitBtn) return;
+    submitBtn.disabled = true;
+    submitBtn.classList.add("btn-locked");
+    const span = submitBtn.querySelector("span");
+    if (span) span.textContent = "Account Locked";
+    if (messageEl) {
+        messageEl.className = "auth-message auth-message-locked";
+        messageEl.innerHTML =
+            "<strong>Account Locked</strong>" +
+            "Your account has been locked after too many failed login attempts. " +
+            "Please contact an <strong>Administrator</strong> to unlock your account.";
+        messageEl.style.display = "block";
+    }
+}
+
+function checkLockedOnLoad() {
+    const submitBtn = document.getElementById("login-submit-btn");
+    const messageEl = document.getElementById("auth-message");
+    try {
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (key && key.startsWith("librowseLoginAttempts_")) {
+                if (parseInt(sessionStorage.getItem(key) || "0", 10) >= MAX_LOGIN_ATTEMPTS) {
+                    applyLockedState(submitBtn, messageEl);
+                    return;
+                }
+            }
+        }
+    } catch (_) {}
+}
+
+async function handleLogin(event) {
+    event.preventDefault();
+    const identifier = document.getElementById("login-identifier")?.value.trim() || "";
+    const password   = document.getElementById("login-password")?.value || "";
+    const submitBtn  = document.getElementById("login-submit-btn");
+    const messageEl  = document.getElementById("auth-message");
+
+    if (submitBtn && submitBtn.classList.contains("btn-locked")) {
+        applyLockedState(submitBtn, messageEl);
+        return;
+    }
+    if (identifier && getLoginAttempts(identifier) >= MAX_LOGIN_ATTEMPTS) {
+        applyLockedState(submitBtn, messageEl);
+        return;
+    }
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
 
     if (!identifier || !password) {
         showMessage("Please enter both your email/username and password.", "error");
         return;
     }
+<<<<<<< HEAD
     if (submitBtn) { submitBtn.disabled = true; submitBtn.querySelector("span").textContent = "Signing in..."; }
+=======
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.querySelector("span").textContent = "Signing in...";
+    }
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     showMessage("Authenticating with Librowse...", "info");
 
     try {
@@ -208,6 +295,7 @@ async function handleLogin(event) {
             body: JSON.stringify({ identifier, password })
         });
         const data = await response.json();
+<<<<<<< HEAD
         if (!response.ok) throw new Error(data.error || "Unable to sign in.");
         saveCurrentUser(data.user, data.token);
         const destination = data.user.role === "Admin" ? "admin.html" : data.user.role === "Staff" ? "staff.html" : "customer-dashboard.html";
@@ -220,6 +308,46 @@ async function handleLogin(event) {
         showMessage(`Unable to sign in: ${detail}`, "error");
     } finally {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector("span").textContent = "Sign In"; }
+=======
+
+        if (!response.ok) {
+            const attempts  = incrementLoginAttempts(identifier);
+            const remaining = MAX_LOGIN_ATTEMPTS - attempts;
+            if (attempts >= MAX_LOGIN_ATTEMPTS) {
+                applyLockedState(submitBtn, messageEl);
+            } else {
+                const base = data.error || "Invalid username/email or password.";
+                const warn = " Warning: " + remaining + " attempt" + (remaining === 1 ? "" : "s") + " remaining before your account is locked.";
+                showMessage(base + warn, "error");
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector("span").textContent = "Sign In"; }
+            }
+            return;
+        }
+
+        resetLoginAttempts(identifier);
+        saveCurrentUser(data.user, data.token);
+        const destination = data.user.role === "Admin"
+            ? "admin.html"
+            : data.user.role === "Staff"
+            ? "staff.html"
+            : "transactions.html";
+        showMessage("Welcome back, " + data.user.username + "! Redirecting...", "success");
+        setTimeout(() => window.location.replace(destination), 250);
+
+    } catch (error) {
+        const attempts  = incrementLoginAttempts(identifier);
+        const remaining = MAX_LOGIN_ATTEMPTS - attempts;
+        if (attempts >= MAX_LOGIN_ATTEMPTS) {
+            applyLockedState(submitBtn, messageEl);
+        } else {
+            const detail = error instanceof TypeError
+                ? "Unable to reach " + API_BASE + ". Check that the PHP API is running and that this page was opened over HTTP/HTTPS (not file://)."
+                : error.message;
+            const warn = " Warning: " + remaining + " attempt" + (remaining === 1 ? "" : "s") + " remaining before your account is locked.";
+            showMessage("Unable to sign in: " + detail + warn, "error");
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector("span").textContent = "Sign In"; }
+        }
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     }
 }
 
@@ -257,7 +385,11 @@ async function handleRegister(event) {
         if (!response.ok) throw new Error(data.error || "Registration failed.");
         saveCurrentUser(data.user, data.token);
         showMessage("Account created successfully! Redirecting...", "success");
+<<<<<<< HEAD
         setTimeout(() => window.location.replace("customer-dashboard.html"), 250);
+=======
+        setTimeout(() => window.location.replace("transactions.html"), 250);
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     } catch (error) {
         showMessage(`Registration failed: ${error.message}`, "error");
     } finally {
@@ -290,7 +422,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             const link = document.getElementById("session-continue-link");
             if (link) {
                 const role = String(data.user.role || '').toLowerCase();
+<<<<<<< HEAD
                 link.href = role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'customer-dashboard.html';
+=======
+                link.href = role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'transactions.html';
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
                 link.textContent = role === 'admin' || role === 'staff' ? 'Open Management Dashboard' : 'Go to Marketplace';
             }
         } catch (_) { await clearCurrentUser(); }
@@ -303,6 +439,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     document.getElementById("login-form")?.addEventListener("submit", handleLogin);
+<<<<<<< HEAD
+=======
+    checkLockedOnLoad();
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     document.getElementById("register-form")?.addEventListener("submit", handleRegister);
 
     document.querySelectorAll(".toggle-password-btn").forEach(button => button.addEventListener("click", () => {

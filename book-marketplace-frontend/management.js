@@ -1,9 +1,16 @@
 function librowseApiBase() {
     if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname || '127.0.0.1';
+<<<<<<< HEAD
     const isLocal = host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:';
     if (isLocal) {
         return 'http://127.0.0.1:8000/api';
+=======
+    const port = window.location.port;
+    if (port === '8000') {
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        return `${protocol}//${host}:8000/api`;
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     }
     return '/api';
 }

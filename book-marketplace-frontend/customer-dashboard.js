@@ -7,10 +7,16 @@
 
     function getApiBase() {
         if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
+<<<<<<< HEAD
         const host = window.location.hostname || '127.0.0.1';
         const isLocal = host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:';
         if (isLocal) return 'http://127.0.0.1:8000/api';
         return '/api';
+=======
+        return window.location.port === '8000'
+            ? (window.location.protocol === 'https:' ? 'https:' : 'http:') + '//' + (window.location.hostname || '127.0.0.1') + ':8000/api'
+            : '/api';
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     }
 
     function setStat(id, value) {

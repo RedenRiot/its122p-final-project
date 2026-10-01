@@ -1,7 +1,11 @@
 /* Shared server-session guard for all authenticated Librowse pages. */
 (function () {
+<<<<<<< HEAD
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
     const API_BASE = (window.LIBROWSE_API_BASE ? String(window.LIBROWSE_API_BASE).replace(/\/$/, "") : (isLocal ? 'http://127.0.0.1:8000/api' : '/api'));
+=======
+    const API_BASE = (window.LIBROWSE_API_BASE ? String(window.LIBROWSE_API_BASE).replace(/\/$/, "") : (window.location.port === "8000" ? `${window.location.protocol === "https:" ? "https:" : "http:"}//${window.location.hostname || "127.0.0.1"}:8000/api` : "/api"));
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     const TOKEN_KEY = "librowseSessionToken";
     const USER_KEY = "librowseCurrentUser";
 
@@ -61,7 +65,11 @@
         if (!user) return null;
         const role = String(user.role || '').toLowerCase();
         if (!allowed.includes(role)) {
+<<<<<<< HEAD
             window.location.replace(role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'customer-dashboard.html');
+=======
+            window.location.replace(role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'transactions.html');
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
             return null;
         }
         return user;

@@ -11,9 +11,16 @@
 function librowseApiBase() {
     if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname || '127.0.0.1';
+<<<<<<< HEAD
     const isLocal = host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:';
     if (isLocal) {
         return 'http://127.0.0.1:8000/api';
+=======
+    const port = window.location.port;
+    if (port === '8000') {
+        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+        return `${protocol}//${host}:8000/api`;
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     }
     return '/api';
 }
@@ -155,12 +162,21 @@ function requireAuthenticatedCustomer() {
 
     if (currentUser.role !== "Customer") {
 
+<<<<<<< HEAD
         alert(
             "This page currently supports Customer accounts only."
         );
 
         window.location.href =
             "login.html";
+=======
+        /* Admin and Staff can view customer pages but cannot submit customer actions */
+        alert(
+            "This action is for Customer accounts only. Admins and Staff can browse but cannot submit listings, refunds, or reports."
+        );
+
+        return false;
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
 
         return false;
 
@@ -1850,6 +1866,57 @@ async function submitReport(event) {
 
 
 /* EVENT LISTENERS */
+<<<<<<< HEAD
+=======
+
+/* ── CUSTOMER DASHBOARD SUMMARY ──────────────────────────────────────────── */
+async function loadDashboardSummary() {
+    if (!currentUser) return;
+    const token = window.librowseAuth ? window.librowseAuth.getToken() : sessionStorage.getItem('librowseSessionToken');
+    const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+    const base = window.librowseAuth ? window.librowseAuth.API_BASE : '/api';
+
+    function setStat(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
+
+    try {
+        const lRes = await fetch(base + '/user_books.php?seller_id=' + currentUser.user_id, { headers });
+        if (lRes.ok) {
+            const listings = await lRes.json().then(function(d){ return Array.isArray(d) ? d : (d.data || []); });
+            setStat('stat-total-listings', listings.length);
+            const active = listings.filter(function(l){ return l.status === 'Available'; }).length;
+            if (active > 0) setStat('stat-active-listings', active + ' available');
+        }
+    } catch(_) {}
+    try {
+        const tRes = await fetch(base + '/transactions.php?buyer_id=' + currentUser.user_id, { headers });
+        if (tRes.ok) {
+            const txns = await tRes.json().then(function(d){ return Array.isArray(d) ? d : (d.data || []); });
+            setStat('stat-total-transactions', txns.length);
+            const pending = txns.filter(function(t){ return t.status === 'Pending'; }).length;
+            if (pending > 0) setStat('stat-pending-transactions', pending + ' pending');
+        }
+    } catch(_) {}
+    try {
+        const rRes = await fetch(base + '/refund_request.php?customer_id=' + currentUser.user_id, { headers });
+        if (rRes.ok) {
+            const refunds = await rRes.json().then(function(d){ return Array.isArray(d) ? d : (d.data || []); });
+            setStat('stat-total-refunds', refunds.length);
+            const pending = refunds.filter(function(r){ return r.status === 'Pending'; }).length;
+            if (pending > 0) setStat('stat-pending-refunds', pending + ' pending');
+        }
+    } catch(_) {}
+    try {
+        const rpRes = await fetch(base + '/reports.php?submitted_by_id=' + currentUser.user_id, { headers });
+        if (rpRes.ok) {
+            const reports = await rpRes.json().then(function(d){ return Array.isArray(d) ? d : (d.data || []); });
+            setStat('stat-total-reports', reports.length);
+            const pending = reports.filter(function(r){ return r.status === 'Pending'; }).length;
+            if (pending > 0) setStat('stat-pending-reports', pending + ' pending');
+        }
+    } catch(_) {}
+}
+
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
 document.addEventListener("DOMContentLoaded", async function () {
     if (window.librowseAuthReady) {
         if (!await window.librowseAuthReady) return;
@@ -1876,5 +1943,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (hasBrowse || hasTransactions) await loadBooks();
     if (hasTransactions) await loadTransactions();
+<<<<<<< HEAD
+=======
+    if (document.getElementById('stat-total-listings')) await loadDashboardSummary();
+>>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     if (hasCategories) await loadCategories();
 });
