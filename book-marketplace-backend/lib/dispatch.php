@@ -82,10 +82,7 @@ function dispatch_crud_request(Crud $crud, string $primaryKeyName): void
     } catch (InvalidArgumentException $e) {
         Response::error($e->getMessage(), 422);
     } catch (PDOException $e) {
-<<<<<<< HEAD
-=======
         // 1062 = duplicate key, 1451/1452 = FK constraint violations
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
         $code = (int) $e->errorInfo[1] ?? 0;
         if ($code === 1062) {
             Response::error('A record with these unique values already exists.', 409, ['details' => $e->getMessage()]);

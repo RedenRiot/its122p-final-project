@@ -1666,8 +1666,6 @@ footer p:first-child {
     transform: none;
 }
 
-<<<<<<< HEAD
-=======
 /* Rate-limit lock state */
 .auth-submit-btn.btn-locked {
     background: #94a3b8 !important;
@@ -1700,7 +1698,6 @@ footer p:first-child {
     color: #7f1d1d;
 }
 
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
 /* Already signed-in session banner */
 .session-active-card {
     background: linear-gradient(135deg, rgba(239, 246, 255, 0.95), rgba(245, 243, 255, 0.95));
@@ -1935,9 +1932,6 @@ button.btn-clear:hover { background: linear-gradient(135deg,#475569,#334155); bo
     .dashboard-cards { grid-template-columns: 1fr 1fr; gap: 10px; }
     .dashboard-card-value { font-size: 28px; }
 }
-<<<<<<< HEAD
-=======
-
 /* ── CUSTOMER DASHBOARD SUMMARY CARDS ───────────────────────────────────── */
 .dashboard-summary-grid {
     display: grid;
@@ -1959,4 +1953,3 @@ button.btn-clear:hover { background: linear-gradient(135deg,#475569,#334155); bo
 .dashboard-stat { font-size: 36px; font-weight: 800; color: var(--primary, #6366f1); margin: 0 0 4px; line-height: 1; }
 .dashboard-stat-label { font-size: 12px; color: var(--text-gray, #64748b); margin: 0 0 6px; }
 .dashboard-stat-sub { font-size: 12px; color: var(--text-gray, #94a3b8); margin: 0; min-height: 16px; }
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3

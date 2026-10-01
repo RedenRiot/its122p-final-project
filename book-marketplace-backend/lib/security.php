@@ -90,11 +90,7 @@ function current_authenticated_user(PDO $pdo): ?array
     $stmt->execute(['id' => (int) $session['user_id']]);
     $user = $stmt->fetch();
 
-<<<<<<< HEAD
     if (!$user || $user['status'] !== 'Active' || $user['role'] !== (string) $session['role']) {
-=======
-    if (!$user || !in_array($user['status'], ['Active'], true) || $user['role'] !== (string) $session['role']) {
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
         revoke_auth_token($token);
         return null;
     }

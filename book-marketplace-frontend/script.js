@@ -11,16 +11,13 @@
 function librowseApiBase() {
     if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname || '127.0.0.1';
-<<<<<<< HEAD
-    const isLocal = host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:';
+    const isLocal = (host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:') && window.location.port !== '8000';
     if (isLocal) {
         return 'http://127.0.0.1:8000/api';
-=======
-    const port = window.location.port;
-    if (port === '8000') {
+    }
+    if (window.location.port === '8000') {
         const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
         return `${protocol}//${host}:8000/api`;
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     }
     return '/api';
 }
@@ -162,21 +159,10 @@ function requireAuthenticatedCustomer() {
 
     if (currentUser.role !== "Customer") {
 
-<<<<<<< HEAD
-        alert(
-            "This page currently supports Customer accounts only."
-        );
-
-        window.location.href =
-            "login.html";
-=======
         /* Admin and Staff can view customer pages but cannot submit customer actions */
         alert(
             "This action is for Customer accounts only. Admins and Staff can browse but cannot submit listings, refunds, or reports."
         );
-
-        return false;
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
 
         return false;
 
@@ -1866,9 +1852,6 @@ async function submitReport(event) {
 
 
 /* EVENT LISTENERS */
-<<<<<<< HEAD
-=======
-
 /* ── CUSTOMER DASHBOARD SUMMARY ──────────────────────────────────────────── */
 async function loadDashboardSummary() {
     if (!currentUser) return;
@@ -1915,8 +1898,6 @@ async function loadDashboardSummary() {
         }
     } catch(_) {}
 }
-
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
 document.addEventListener("DOMContentLoaded", async function () {
     if (window.librowseAuthReady) {
         if (!await window.librowseAuthReady) return;
@@ -1943,9 +1924,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     if (hasBrowse || hasTransactions) await loadBooks();
     if (hasTransactions) await loadTransactions();
-<<<<<<< HEAD
-=======
     if (document.getElementById('stat-total-listings')) await loadDashboardSummary();
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     if (hasCategories) await loadCategories();
 });

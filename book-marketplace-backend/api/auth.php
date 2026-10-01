@@ -40,8 +40,6 @@ try {
             Response::error('Username/email and password are required.', 422);
         }
 
-<<<<<<< HEAD
-=======
         /* ── Auto-create LOGIN_ATTEMPTS table if not yet present ─────────── */
         $pdo->exec(
             'CREATE TABLE IF NOT EXISTS `LOGIN_ATTEMPTS` (
@@ -52,7 +50,6 @@ try {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
         );
 
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
         // MySQL native prepared statements do not reliably allow the same
         // named placeholder to appear more than once in a statement.
         // Use two parameters for the username/email comparison.
@@ -67,10 +64,6 @@ try {
             'email_identifier' => $identifier,
         ]);
         $user = $stmt->fetch();
-<<<<<<< HEAD
-        if (!$user) Response::error('Invalid username/email or password.', 401);
-
-=======
 
         /* Unknown user — generic error (do not reveal whether account exists) */
         if (!$user) Response::error('Invalid username/email or password.', 401);
@@ -89,7 +82,6 @@ try {
             Response::error('This account is not active and cannot sign in.', 403);
         }
 
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
         $hash = (string) $user['password_hash'];
         $valid = $hash !== '' && password_verify($password, $hash);
 
@@ -107,10 +99,6 @@ try {
             $valid = true;
         }
 
-<<<<<<< HEAD
-        if (!$valid) Response::error('Invalid username/email or password.', 401);
-        if ($user['status'] !== 'Active') Response::error('This account is not active and cannot sign in.', 403);
-=======
         if (!$valid) {
             /* ── Record failed attempt ─────────────────────────────────────── */
             $pdo->prepare(
@@ -141,20 +129,13 @@ try {
         /* ── Success: clear attempt log and issue token ────────────────────── */
         $pdo->prepare('DELETE FROM `LOGIN_ATTEMPTS` WHERE user_id = :uid')
             ->execute(['uid' => (int) $user['user_id']]);
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
 
         $token = issue_auth_token($user);
         Response::json([
             'authenticated' => true,
-<<<<<<< HEAD
-            'token' => $token,
-            'expires_in' => LIBROWSE_SESSION_TTL,
-            'user' => public_user($user),
-=======
             'token'         => $token,
             'expires_in'    => LIBROWSE_SESSION_TTL,
             'user'          => public_user($user),
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
         ]);
     }
 

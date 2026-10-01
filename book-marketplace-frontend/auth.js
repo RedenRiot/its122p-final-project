@@ -3,16 +3,13 @@
 function librowseApiBase() {
     if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname || '127.0.0.1';
-<<<<<<< HEAD
-    const isLocal = host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:';
+    const isLocal = (host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:') && window.location.port !== '8000';
     if (isLocal) {
         return 'http://127.0.0.1:8000/api';
-=======
-    const port = window.location.port;
-    if (port === '8000') {
+    }
+    if (window.location.port === '8000') {
         const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
         return `${protocol}//${host}:8000/api`;
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     }
     return '/api';
 }
@@ -194,15 +191,8 @@ async function clearCurrentUser() {
  * Processes Customer login form submission
  * @param {Event} event
  */
-<<<<<<< HEAD
-async function handleLogin(event) {
-    event.preventDefault();
-    const identifier = document.getElementById("login-identifier")?.value.trim() || "";
-    const password = document.getElementById("login-password")?.value || "";
-    const submitBtn = document.getElementById("login-submit-btn");
-=======
 /* ── RATE LIMITING ─────────────────────────────────────────────────────────
-   3 attempts max. On the 3rd failure the button turns grey and the account
+   4 attempts max. On the 4th failure the button turns grey and the account
    is locked. Admin must set status back to Active to unlock.
    ────────────────────────────────────────────────────────────────────────── */
 const MAX_LOGIN_ATTEMPTS = 4;
@@ -270,21 +260,15 @@ async function handleLogin(event) {
         applyLockedState(submitBtn, messageEl);
         return;
     }
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
 
     if (!identifier || !password) {
         showMessage("Please enter both your email/username and password.", "error");
         return;
     }
-<<<<<<< HEAD
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.querySelector("span").textContent = "Signing in..."; }
-=======
-
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.querySelector("span").textContent = "Signing in...";
     }
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     showMessage("Authenticating with Librowse...", "info");
 
     try {
@@ -295,21 +279,6 @@ async function handleLogin(event) {
             body: JSON.stringify({ identifier, password })
         });
         const data = await response.json();
-<<<<<<< HEAD
-        if (!response.ok) throw new Error(data.error || "Unable to sign in.");
-        saveCurrentUser(data.user, data.token);
-        const destination = data.user.role === "Admin" ? "admin.html" : data.user.role === "Staff" ? "staff.html" : "customer-dashboard.html";
-        showMessage(`Welcome back, ${data.user.username}! Redirecting...`, "success");
-        setTimeout(() => window.location.replace(destination), 250);
-    } catch (error) {
-        const detail = error instanceof TypeError
-            ? `Unable to reach ${API_BASE}. Check that the PHP API is running and that this page was opened over HTTP/HTTPS (not file://).`
-            : error.message;
-        showMessage(`Unable to sign in: ${detail}`, "error");
-    } finally {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector("span").textContent = "Sign In"; }
-=======
-
         if (!response.ok) {
             const attempts  = incrementLoginAttempts(identifier);
             const remaining = MAX_LOGIN_ATTEMPTS - attempts;
@@ -347,7 +316,6 @@ async function handleLogin(event) {
             showMessage("Unable to sign in: " + detail + warn, "error");
             if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector("span").textContent = "Sign In"; }
         }
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     }
 }
 
@@ -385,11 +353,7 @@ async function handleRegister(event) {
         if (!response.ok) throw new Error(data.error || "Registration failed.");
         saveCurrentUser(data.user, data.token);
         showMessage("Account created successfully! Redirecting...", "success");
-<<<<<<< HEAD
-        setTimeout(() => window.location.replace("customer-dashboard.html"), 250);
-=======
         setTimeout(() => window.location.replace("transactions.html"), 250);
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     } catch (error) {
         showMessage(`Registration failed: ${error.message}`, "error");
     } finally {
@@ -422,11 +386,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const link = document.getElementById("session-continue-link");
             if (link) {
                 const role = String(data.user.role || '').toLowerCase();
-<<<<<<< HEAD
-                link.href = role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'customer-dashboard.html';
-=======
                 link.href = role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'transactions.html';
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
                 link.textContent = role === 'admin' || role === 'staff' ? 'Open Management Dashboard' : 'Go to Marketplace';
             }
         } catch (_) { await clearCurrentUser(); }
@@ -439,10 +399,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     document.getElementById("login-form")?.addEventListener("submit", handleLogin);
-<<<<<<< HEAD
-=======
     checkLockedOnLoad();
->>>>>>> bdc6a655ad275ce0c4f2274113f2e54ac16b90b3
     document.getElementById("register-form")?.addEventListener("submit", handleRegister);
 
     document.querySelectorAll(".toggle-password-btn").forEach(button => button.addEventListener("click", () => {
