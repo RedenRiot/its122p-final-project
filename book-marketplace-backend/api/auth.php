@@ -105,8 +105,13 @@ try {
                 'INSERT INTO `LOGIN_ATTEMPTS` (user_id, attempted_at) VALUES (:uid, UTC_TIMESTAMP())'
             )->execute(['uid' => (int) $user['user_id']]);
 
+            // Prune expired attempts older than 24 hours
+            $pdo->exec("DELETE FROM `LOGIN_ATTEMPTS` WHERE attempted_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 24 HOUR)");
+
+            // Only count failed attempts within a rolling 15-minute window
             $countStmt = $pdo->prepare(
-                'SELECT COUNT(*) FROM `LOGIN_ATTEMPTS` WHERE user_id = :uid'
+                'SELECT COUNT(*) FROM `LOGIN_ATTEMPTS`
+                 WHERE user_id = :uid AND attempted_at > DATE_SUB(UTC_TIMESTAMP(), INTERVAL 15 MINUTE)'
             );
             $countStmt->execute(['uid' => (int) $user['user_id']]);
             $totalAttempts = (int) $countStmt->fetchColumn();

@@ -74,13 +74,15 @@ if ($dbSsl) {
         '/etc/ssl/ca-bundle.pem',                   // OpenSUSE
         '/dev/null',                                 // last resort: initiates TLS, skips CA check
     ];
+    $caFound = false;
     foreach ($caBundles as $bundle) {
         if (file_exists($bundle)) {
             $pdoOptions[PDO::MYSQL_ATTR_SSL_CA] = $bundle;
+            $caFound = ($bundle !== '/dev/null');
             break;
         }
     }
-    $pdoOptions[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+    $pdoOptions[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = $caFound;
 }
 
 $pdo = null;
@@ -98,9 +100,10 @@ try {
     header('Access-Control-Allow-Headers: Content-Type, Authorization, Cache-Control');
     http_response_code(500);
     header('Content-Type: application/json');
-    echo json_encode([
-        'error'   => 'Database connection failed',
-        'details' => $e->getMessage(),
-    ]);
+    $payload = ['error' => 'Database connection failed'];
+    if (filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN)) {
+        $payload['details'] = $e->getMessage();
+    }
+    echo json_encode($payload);
     exit;
 }

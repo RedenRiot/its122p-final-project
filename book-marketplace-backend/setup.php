@@ -1,11 +1,24 @@
 <?php
 /**
- * LIBROWSE - One-click database setup
+ * LIBROWSE - Database setup script
  * 
- * Place this file in book-marketplace-backend/
- * Visit http://127.0.0.1:8000/setup.php in your browser
- * Delete this file after setup is complete.
+ * Only executable via CLI or locally with an authorized secret key.
  */
+
+// Execution guard: block unauthorized web invocation
+$isCli = (php_sapi_name() === 'cli');
+$remoteIp = $_SERVER['REMOTE_ADDR'] ?? '';
+$isLocal = in_array($remoteIp, ['127.0.0.1', '::1'], true);
+$setupKey = getenv('SETUP_SECRET_KEY') ?: ($_ENV['SETUP_SECRET_KEY'] ?? null);
+
+if (!$isCli && (!$isLocal || empty($setupKey) || ($_GET['key'] ?? '') !== $setupKey)) {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'error' => 'Forbidden: Database setup script is disabled via public HTTP. Execute via CLI (php setup.php) or supply a valid local setup key.'
+    ]);
+    exit;
+}
 
 $dbHost = '127.0.0.1';
 $dbPort = '3306';

@@ -17,10 +17,11 @@ register_shutdown_function(function (): void {
             http_response_code(500);
             header('Content-Type: application/json');
         }
-        echo json_encode([
-            'error'   => 'Server error',
-            'details' => $err['message'] . ' in ' . $err['file'] . ':' . $err['line'],
-        ]);
+        $payload = ['error' => 'Server error'];
+        if (filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $payload['details'] = $err['message'] . ' in ' . $err['file'] . ':' . $err['line'];
+        }
+        echo json_encode($payload);
     }
 });
 

@@ -75,6 +75,16 @@ function loadCurrentUser() {
 }
 
 
+function escapeHTML(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function updateAuthStatusUI() {
 
     const authStatus =
@@ -106,7 +116,7 @@ function updateAuthStatusUI() {
 
     authStatus.innerHTML = `
         <span>
-            Signed in as <strong>${currentUser.username}</strong>
+            Signed in as <strong>${escapeHTML(currentUser.username)}</strong>
         </span>
 
         <button id="logout-button" type="button">
@@ -460,29 +470,29 @@ function renderBooks(listings) {
             </td>
 
             <td>
-                ${title}
+                ${escapeHTML(title)}
             </td>
 
             <td>
-                ${author}
+                ${escapeHTML(author)}
             </td>
 
             <td>
-                ${categoryNames}
+                ${escapeHTML(categoryNames)}
             </td>
 
             <td>
-                ${sellerName}
+                ${escapeHTML(sellerName)}
             </td>
 
             <td>
-                ${formatListingType(
+                ${escapeHTML(formatListingType(
             listing.listing_type
-        )}
+        ))}
             </td>
 
             <td>
-                ${listing.condition}
+                ${escapeHTML(listing.condition)}
             </td>
 
             <td>
@@ -492,7 +502,7 @@ function renderBooks(listings) {
             </td>
 
             <td>
-                ${listing.status}
+                ${escapeHTML(listing.status)}
             </td>
 
             <td class="book-actions"></td>
@@ -1156,8 +1166,8 @@ function showNewListingResult(listing, book) {
 
                 return `
                     <tr>
-                        <th>${row[0]}</th>
-                        <td>${row[1]}</td>
+                        <th>${escapeHTML(row[0])}</th>
+                        <td>${escapeHTML(row[1])}</td>
                     </tr>
                 `;
 
@@ -1500,11 +1510,11 @@ function renderTransactions(transactionData) {
                 </td>
 
                 <td>
-                    ${bookTitle}
+                    ${escapeHTML(bookTitle)}
                 </td>
 
                 <td>
-                    ${transaction.transaction_type}
+                    ${escapeHTML(transaction.transaction_type)}
                 </td>
 
                 <td>
@@ -1514,7 +1524,7 @@ function renderTransactions(transactionData) {
                 </td>
 
                 <td>
-                    ${transaction.status}
+                    ${escapeHTML(transaction.status)}
                 </td>
 
                 <td class="transaction-action"></td>
