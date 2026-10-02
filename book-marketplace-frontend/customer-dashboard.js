@@ -7,9 +7,13 @@
 
     function getApiBase() {
         if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
-        return window.location.port === '8000'
-            ? (window.location.protocol === 'https:' ? 'https:' : 'http:') + '//' + (window.location.hostname || '127.0.0.1') + ':8000/api'
-            : '/api';
+        const host = window.location.hostname || '127.0.0.1';
+        const isLocal = (host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:') && window.location.port !== '8000';
+        if (isLocal) return 'http://127.0.0.1:8000/api';
+        if (window.location.port === '8000') {
+            return (window.location.protocol === 'https:' ? 'https:' : 'http:') + '//' + host + ':8000/api';
+        }
+        return '/api';
     }
 
     function setStat(id, value) {
@@ -58,6 +62,16 @@
 
         var tbody = document.getElementById('dashboard-listing-body');
         var table = document.getElementById('dashboard-listing-table');
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
         if (tbody && table) {
             if (listings.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6">You have no listings yet. <a href="list-book.html">List a book →</a></td></tr>';
@@ -66,7 +80,7 @@
                     var book = bookMap[l.book_id] || {};
                     var type = l.listing_type === 'For_sale' ? 'For Sale' : l.listing_type === 'For_trade' ? 'For Trade' : 'Sale / Trade';
                     var price = (l.price !== null && l.price !== undefined && l.price !== '') ? '₱' + Number(l.price).toFixed(2) : 'Trade Only';
-                    return '<tr><td>' + l.inventory_id + '</td><td>' + (book.title || 'Unknown') + '</td><td>' + type + '</td><td>' + price + '</td><td>' + l.condition + '</td><td>' + l.status + '</td></tr>';
+                    return '<tr><td>' + escapeHTML(l.inventory_id) + '</td><td>' + escapeHTML(book.title || 'Unknown') + '</td><td>' + escapeHTML(type) + '</td><td>' + escapeHTML(price) + '</td><td>' + escapeHTML(l.condition) + '</td><td>' + escapeHTML(l.status) + '</td></tr>';
                 }).join('');
             }
             table.style.display = '';

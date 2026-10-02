@@ -14,7 +14,6 @@ function dispatch_crud_request(Crud $crud, string $primaryKeyName): void
 {
     global $pdo; /* bring the $pdo connection into function scope */
 
-    header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -82,14 +81,16 @@ function dispatch_crud_request(Crud $crud, string $primaryKeyName): void
     } catch (InvalidArgumentException $e) {
         Response::error($e->getMessage(), 422);
     } catch (PDOException $e) {
+        $isDebug = filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN);
+        $details = $isDebug ? ['details' => $e->getMessage()] : [];
         // 1062 = duplicate key, 1451/1452 = FK constraint violations
-        $code = (int) $e->errorInfo[1] ?? 0;
+        $code = (int) ($e->errorInfo[1] ?? 0);
         if ($code === 1062) {
-            Response::error('A record with these unique values already exists.', 409, ['details' => $e->getMessage()]);
+            Response::error('A record with these unique values already exists.', 409, $details);
         } elseif (in_array($code, [1451, 1452], true)) {
-            Response::error('This operation violates a foreign key relationship.', 409, ['details' => $e->getMessage()]);
+            Response::error('This operation violates a foreign key relationship.', 409, $details);
         } else {
-            Response::error('Database error.', 500, ['details' => $e->getMessage()]);
+            Response::error('Database error.', 500, $details);
         }
     }
 }

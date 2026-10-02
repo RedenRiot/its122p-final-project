@@ -17,10 +17,11 @@ register_shutdown_function(function (): void {
             http_response_code(500);
             header('Content-Type: application/json');
         }
-        echo json_encode([
-            'error'   => 'Server error',
-            'details' => $err['message'] . ' in ' . $err['file'] . ':' . $err['line'],
-        ]);
+        $payload = ['error' => 'Server error'];
+        if (filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            $payload['details'] = $err['message'] . ' in ' . $err['file'] . ':' . $err['line'];
+        }
+        echo json_encode($payload);
     }
 });
 
@@ -37,6 +38,9 @@ if ($origin !== '' && preg_match($allowedOriginPattern, $origin)) {
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, Cache-Control');
 header('Access-Control-Max-Age: 600');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');

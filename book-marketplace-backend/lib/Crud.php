@@ -20,6 +20,8 @@ class Crud
     private array $enums;
     /** @var string[] columns that must be present (and non-null) on create */
     private array $required;
+    /** @var string[] columns to strip from output responses */
+    private array $hidden;
 
     public function __construct(
         PDO $pdo,
@@ -28,7 +30,8 @@ class Crud
         array $insertable,
         array $required = [],
         array $enums = [],
-        ?array $updatable = null
+        ?array $updatable = null,
+        array $hidden = []
     ) {
         $this->pdo = $pdo;
         $this->table = $table;
@@ -37,6 +40,20 @@ class Crud
         $this->updatable = $updatable ?? $insertable;
         $this->enums = $enums;
         $this->required = $required;
+        $this->hidden = $hidden;
+    }
+
+    private function sanitizeRow(?array $row): ?array
+    {
+        if (!$row) {
+            return null;
+        }
+        if ($this->hidden) {
+            foreach ($this->hidden as $col) {
+                unset($row[$col]);
+            }
+        }
+        return $row;
     }
 
     /**
@@ -69,7 +86,16 @@ class Crud
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($bindings);
 
-        return $stmt->fetchAll();
+        $rows = $stmt->fetchAll();
+        if ($this->hidden) {
+            foreach ($rows as &$r) {
+                foreach ($this->hidden as $col) {
+                    unset($r[$col]);
+                }
+            }
+        }
+
+        return $rows;
     }
 
     /** GET /api/<resource>?id=5 */
@@ -81,7 +107,7 @@ class Crud
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
 
-        return $row ?: null;
+        return $this->sanitizeRow($row ?: null);
     }
 
     /**

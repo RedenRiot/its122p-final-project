@@ -11,8 +11,11 @@
 function librowseApiBase() {
     if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname || '127.0.0.1';
-    const port = window.location.port;
-    if (port === '8000') {
+    const isLocal = (host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:') && window.location.port !== '8000';
+    if (isLocal) {
+        return 'http://127.0.0.1:8000/api';
+    }
+    if (window.location.port === '8000') {
         const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
         return `${protocol}//${host}:8000/api`;
     }
@@ -72,6 +75,16 @@ function loadCurrentUser() {
 }
 
 
+function escapeHTML(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 function updateAuthStatusUI() {
 
     const authStatus =
@@ -103,7 +116,7 @@ function updateAuthStatusUI() {
 
     authStatus.innerHTML = `
         <span>
-            Signed in as <strong>${currentUser.username}</strong>
+            Signed in as <strong>${escapeHTML(currentUser.username)}</strong>
         </span>
 
         <button id="logout-button" type="button">
@@ -160,8 +173,6 @@ function requireAuthenticatedCustomer() {
         alert(
             "This action is for Customer accounts only. Admins and Staff can browse but cannot submit listings, refunds, or reports."
         );
-
-        return false;
 
         return false;
 
@@ -459,29 +470,29 @@ function renderBooks(listings) {
             </td>
 
             <td>
-                ${title}
+                ${escapeHTML(title)}
             </td>
 
             <td>
-                ${author}
+                ${escapeHTML(author)}
             </td>
 
             <td>
-                ${categoryNames}
+                ${escapeHTML(categoryNames)}
             </td>
 
             <td>
-                ${sellerName}
+                ${escapeHTML(sellerName)}
             </td>
 
             <td>
-                ${formatListingType(
+                ${escapeHTML(formatListingType(
             listing.listing_type
-        )}
+        ))}
             </td>
 
             <td>
-                ${listing.condition}
+                ${escapeHTML(listing.condition)}
             </td>
 
             <td>
@@ -491,7 +502,7 @@ function renderBooks(listings) {
             </td>
 
             <td>
-                ${listing.status}
+                ${escapeHTML(listing.status)}
             </td>
 
             <td class="book-actions"></td>
@@ -1155,8 +1166,8 @@ function showNewListingResult(listing, book) {
 
                 return `
                     <tr>
-                        <th>${row[0]}</th>
-                        <td>${row[1]}</td>
+                        <th>${escapeHTML(row[0])}</th>
+                        <td>${escapeHTML(row[1])}</td>
                     </tr>
                 `;
 
@@ -1499,11 +1510,11 @@ function renderTransactions(transactionData) {
                 </td>
 
                 <td>
-                    ${bookTitle}
+                    ${escapeHTML(bookTitle)}
                 </td>
 
                 <td>
-                    ${transaction.transaction_type}
+                    ${escapeHTML(transaction.transaction_type)}
                 </td>
 
                 <td>
@@ -1513,7 +1524,7 @@ function renderTransactions(transactionData) {
                 </td>
 
                 <td>
-                    ${transaction.status}
+                    ${escapeHTML(transaction.status)}
                 </td>
 
                 <td class="transaction-action"></td>
@@ -1851,7 +1862,6 @@ async function submitReport(event) {
 
 
 /* EVENT LISTENERS */
-
 /* ── CUSTOMER DASHBOARD SUMMARY ──────────────────────────────────────────── */
 async function loadDashboardSummary() {
     if (!currentUser) return;
@@ -1898,7 +1908,6 @@ async function loadDashboardSummary() {
         }
     } catch(_) {}
 }
-
 document.addEventListener("DOMContentLoaded", async function () {
     if (window.librowseAuthReady) {
         if (!await window.librowseAuthReady) return;

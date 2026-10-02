@@ -458,3 +458,4 @@ body.management-body {
     .management-grid.cards-3 { grid-template-columns: 1fr; }
     .management-nav { grid-template-columns: 1fr; }
 }
+.unlock-request-cell { display: flex; flex-direction: column; gap: 4px; max-width: 320px; font-size: 13px; }

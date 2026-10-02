@@ -1932,7 +1932,6 @@ button.btn-clear:hover { background: linear-gradient(135deg,#475569,#334155); bo
     .dashboard-cards { grid-template-columns: 1fr 1fr; gap: 10px; }
     .dashboard-card-value { font-size: 28px; }
 }
-
 /* ── CUSTOMER DASHBOARD SUMMARY CARDS ───────────────────────────────────── */
 .dashboard-summary-grid {
     display: grid;
@@ -1954,3 +1953,147 @@ button.btn-clear:hover { background: linear-gradient(135deg,#475569,#334155); bo
 .dashboard-stat { font-size: 36px; font-weight: 800; color: var(--primary, #6366f1); margin: 0 0 4px; line-height: 1; }
 .dashboard-stat-label { font-size: 12px; color: var(--text-gray, #64748b); margin: 0 0 6px; }
 .dashboard-stat-sub { font-size: 12px; color: var(--text-gray, #94a3b8); margin: 0; min-height: 16px; }
+
+/* =========================================================================
+   LOGIN LOCKOUT — warnings, locked notice, "Request an unlock"
+   ========================================================================= */
+[hidden] { display: none !important; }
+
+.login-security-note {
+    margin: 16px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-gray);
+}
+button.text-link,
+button.lock-retry-link {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    font-weight: 700;
+    color: var(--blue);
+    background: none;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+button.text-link::before,
+button.lock-retry-link::before,
+button.lock-request-btn::before,
+.unlock-dialog button::before { display: none; }
+button.text-link:hover,
+button.lock-retry-link:hover { background: none; box-shadow: none; transform: none; color: var(--blue-dark); }
+button.lock-retry-link { color: #991b1b; font-size: 13px; }
+
+/* Wrong-password warnings (attempt 1-2 red, attempt 3 amber "last chance") */
+.auth-message > div { flex: 1; line-height: 1.55; }
+.auth-message.auth-warning {
+    background: #fffbeb;
+    border: 1.5px solid #fcd34d;
+    color: #92400e;
+}
+.attempt-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.attempt-dots { display: inline-flex; gap: 5px; }
+.attempt-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    opacity: .5;
+}
+.attempt-dot.used { background: currentColor; opacity: 1; }
+
+/* Locked notice */
+.auth-message-locked span { display: block; }
+.auth-message-locked strong { display: inline; margin: 0; font-size: inherit; }
+.auth-message-locked strong.lock-title { display: block; margin-bottom: 4px; font-size: 15px; }
+.lock-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; }
+button.lock-request-btn {
+    margin: 0;
+    padding: 9px 18px;
+    font-size: 13px;
+    background: #dc2626;
+    box-shadow: 0 8px 18px rgba(220, 38, 38, .25);
+}
+button.lock-request-btn:hover { background: #b91c1c; }
+
+/* Unlock request dialog */
+.optional-tag {
+    margin-left: 6px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-gray);
+    background: #f1f5f9;
+    border-radius: 999px;
+}
+.unlock-dialog {
+    width: min(460px, 92vw);
+    padding: 0;
+    color: var(--text-dark);
+    background: #fff;
+    border: 1px solid var(--border-card);
+    border-radius: 18px;
+    box-shadow: 0 30px 60px -20px rgba(15, 23, 42, .55);
+}
+.unlock-dialog::backdrop { background: rgba(11, 16, 32, .6); backdrop-filter: blur(3px); }
+.unlock-dialog form { position: relative; padding: 28px 28px 26px; }
+.unlock-dialog h2 { margin: 0 0 6px; font-size: 22px; color: var(--text-dark); }
+.unlock-intro { margin: 0 0 10px; color: var(--text-gray); font-size: 14px; }
+.unlock-dialog label { display: block; margin: 14px 0 6px; font-size: 13px; font-weight: 700; color: var(--text-dark); }
+.unlock-dialog input,
+.unlock-dialog textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    font: inherit;
+    font-size: 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+}
+.unlock-dialog textarea { min-height: 84px; resize: vertical; }
+.unlock-dialog input:focus,
+.unlock-dialog textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, .18); }
+.unlock-dialog .dialog-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    margin: 0;
+    padding: 0;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--text-dark);
+    background: #f1f5f9;
+    box-shadow: none;
+    border-radius: 50%;
+}
+.unlock-dialog .dialog-close:hover { background: #e2e8f0; transform: none; }
+.unlock-actions { display: flex; gap: 10px; margin-top: 18px; }
+.unlock-actions button { margin: 0; }
+.unlock-done {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 6px;
+    padding: 16px 18px;
+    color: #166534;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+}
+.unlock-done span { color: #334155; font-size: 14px; }
+.unlock-done button { margin-top: 6px; }

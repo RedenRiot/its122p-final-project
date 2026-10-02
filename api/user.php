@@ -1,1 +1,2 @@
-<?php require_once __DIR__ . '/../book-marketplace-backend/api/user.php';
+<?php
+require_once __DIR__ . '/../book-marketplace-backend/api/user.php';
