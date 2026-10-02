@@ -406,4 +406,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         const input = document.getElementById(button.dataset.target);
         if (input) input.type = input.type === "password" ? "text" : "password";
     }));
+
+    // Demo convenience buttons to autofill presentation test accounts
+    document.querySelectorAll(".demo-pill").forEach(button => button.addEventListener("click", () => {
+        const username = document.getElementById("login-identifier");
+        const password = document.getElementById("login-password");
+        if (username) username.value = button.dataset.username || "";
+        if (password) password.value = button.dataset.pass || "password";
+    }));
 });
