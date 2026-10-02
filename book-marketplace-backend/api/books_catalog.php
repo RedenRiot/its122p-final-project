@@ -192,12 +192,14 @@ try {
 } catch (InvalidArgumentException $e) {
     Response::error($e->getMessage(), 422);
 } catch (PDOException $e) {
+    $isDebug = filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN);
+    $details = $isDebug ? ['details' => $e->getMessage()] : [];
     $code = (int) ($e->errorInfo[1] ?? 0);
     if ($code === 1062) {
-        Response::error('A record with these unique values already exists.', 409, ['details' => $e->getMessage()]);
+        Response::error('A record with these unique values already exists.', 409, $details);
     } elseif (in_array($code, [1451, 1452], true)) {
-        Response::error('This operation violates a foreign key relationship.', 409, ['details' => $e->getMessage()]);
+        Response::error('This operation violates a foreign key relationship.', 409, $details);
     } else {
-        Response::error('Database error.', 500, ['details' => $e->getMessage()]);
+        Response::error('Database error.', 500, $details);
     }
 }

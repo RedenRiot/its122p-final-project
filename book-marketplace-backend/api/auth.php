@@ -192,5 +192,7 @@ try {
 } catch (PDOException $e) {
     Response::error('Authentication database error.', 500);
 } catch (Throwable $e) {
-    Response::error('Authentication service error.', 500, ['details' => $e->getMessage()]);
+    $isDebug = filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN);
+    $details = $isDebug ? ['details' => $e->getMessage()] : [];
+    Response::error('Authentication service error.', 500, $details);
 }

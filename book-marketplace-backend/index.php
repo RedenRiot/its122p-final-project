@@ -11,7 +11,8 @@ try {
     $pdo->query('SELECT 1');
     $dbStatus = 'connected';
 } catch (Throwable $e) {
-    $dbStatus = 'error: ' . $e->getMessage();
+    $isDebug = filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN);
+    $dbStatus = $isDebug ? ('error: ' . $e->getMessage()) : 'error: connection failed';
 }
 
 echo json_encode([
