@@ -29,6 +29,28 @@ function public_user(array $user): array
     ];
 }
 
+/* 3 wrong passwords allowed; the 4th locks the account */
+const LIBROWSE_MAX_FAILED_LOGINS = 3;
+
+function locked_response(string $username): void
+{
+    Response::json([
+        'error'        => 'Your account is locked because of too many incorrect password attempts. Please contact an administrator to unlock it.',
+        'locked'       => true,
+        'username'     => $username,
+        'max_attempts' => LIBROWSE_MAX_FAILED_LOGINS,
+    ], 423);
+}
+
+/* Older databases don't list 'Locked' as a USER status yet — add it once */
+function ensure_locked_status(PDO $pdo): void
+{
+    $col = $pdo->query("SHOW COLUMNS FROM `USER` LIKE 'status'")->fetch();
+    if ($col && strpos((string) $col['Type'], "'Locked'") === false) {
+        $pdo->exec("ALTER TABLE `USER` MODIFY `status` ENUM('Active','Suspended','Banned','Pending Verification','Locked') NOT NULL DEFAULT 'Pending Verification'");
+    }
+}
+
 $action = strtolower((string) ($_GET['action'] ?? ''));
 
 try {
@@ -68,13 +90,9 @@ try {
         /* Unknown user — generic error (do not reveal whether account exists) */
         if (!$user) Response::error('Invalid username/email or password.', 401);
 
-        /* Already locked by a previous lockout */
+        /* Already locked — stays locked (even with the right password) until an Admin unlocks it */
         if ($user['status'] === 'Locked') {
-            Response::error(
-                'Your account has been locked due to too many failed login attempts. ' .
-                'Please contact an Administrator to unlock your account.',
-                403
-            );
+            locked_response((string) $user['username']);
         }
 
         /* Other non-active statuses (Suspended, Banned, Pending Verification) */
@@ -100,35 +118,37 @@ try {
         }
 
         if (!$valid) {
-            /* ── Record failed attempt ─────────────────────────────────────── */
-            $pdo->prepare(
-                'INSERT INTO `LOGIN_ATTEMPTS` (user_id, attempted_at) VALUES (:uid, UTC_TIMESTAMP())'
-            )->execute(['uid' => (int) $user['user_id']]);
+            /* ── Record the failed attempt ─────────────────────────────────────
+               Every wrong password since the last successful sign-in counts —
+               there is no time window, so waiting does not reset the count.
+               3 wrong passwords are allowed; the 4th locks the account. */
+            $uid = (int) $user['user_id'];
+            $pdo->prepare('INSERT INTO `LOGIN_ATTEMPTS` (user_id, attempted_at) VALUES (:uid, UTC_TIMESTAMP())')
+                ->execute(['uid' => $uid]);
+            $countStmt = $pdo->prepare('SELECT COUNT(*) FROM `LOGIN_ATTEMPTS` WHERE user_id = :uid');
+            $countStmt->execute(['uid' => $uid]);
+            $failed = (int) $countStmt->fetchColumn();
 
-            // Prune expired attempts older than 24 hours
-            $pdo->exec("DELETE FROM `LOGIN_ATTEMPTS` WHERE attempted_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 24 HOUR)");
-
-            // Only count failed attempts within a rolling 15-minute window
-            $countStmt = $pdo->prepare(
-                'SELECT COUNT(*) FROM `LOGIN_ATTEMPTS`
-                 WHERE user_id = :uid AND attempted_at > DATE_SUB(UTC_TIMESTAMP(), INTERVAL 15 MINUTE)'
-            );
-            $countStmt->execute(['uid' => (int) $user['user_id']]);
-            $totalAttempts = (int) $countStmt->fetchColumn();
-
-            /* On 4th failure — lock the account */
-            if ($totalAttempts >= 4) {
-                $pdo->prepare(
-                    "UPDATE `USER` SET status = 'Locked' WHERE user_id = :uid"
-                )->execute(['uid' => (int) $user['user_id']]);
-                Response::error(
-                    'Your account has been locked after too many failed login attempts. ' .
-                    'Please contact an Administrator to unlock your account.',
-                    403
-                );
+            if ($failed > LIBROWSE_MAX_FAILED_LOGINS) {
+                ensure_locked_status($pdo);
+                $pdo->prepare("UPDATE `USER` SET status = 'Locked' WHERE user_id = :uid")
+                    ->execute(['uid' => $uid]);
+                // Start from zero once an Admin unlocks the account
+                $pdo->prepare('DELETE FROM `LOGIN_ATTEMPTS` WHERE user_id = :uid')->execute(['uid' => $uid]);
+                locked_response((string) $user['username']);
+            }
             }
 
-            Response::error('Invalid username/email or password.', 401);
+            $finalWarning = ($failed === LIBROWSE_MAX_FAILED_LOGINS);
+            Response::json([
+                'error'         => $finalWarning
+                    ? 'Incorrect password. This was your last allowed attempt — one more incorrect password will lock your account.'
+                    : 'Incorrect password.',
+                'locked'        => false,
+                'attempts_used' => $failed,
+                'max_attempts'  => LIBROWSE_MAX_FAILED_LOGINS,
+                'final_warning' => $finalWarning,
+            ], 401);
         }
 
         /* ── Success: clear attempt log and issue token ────────────────────── */
