@@ -338,7 +338,7 @@ async function handleRegister(event) {
     if (!username || !email || !password || !confirmPassword) return showMessage("Please fill in all registration fields.", "error");
     if (!/^[a-zA-Z0-9_]{3,50}$/.test(username)) return showMessage("Username must be 3-50 characters and contain only letters, numbers, and underscores.", "error");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showMessage("Please provide a valid email address.", "error");
-    if (password.length < 6) return showMessage("Password must be at least 6 characters long.", "error");
+    if (password.length < 8) return showMessage("Password must be at least 8 characters long.", "error");
     if (password !== confirmPassword) return showMessage("Passwords do not match.", "error");
 
     if (submitBtn) { submitBtn.disabled = true; submitBtn.querySelector("span").textContent = "Creating Account..."; }
