@@ -128,19 +128,68 @@ if ($method === 'GET' && ($_GET['action'] ?? '') === 'cover') {
 /* Book lists: every column except the photo itself, plus has_cover / cover_v */
 if ($method === 'GET') {
     require_authenticated_user($pdo);
-    $where = ['deleted_at IS NULL'];
+    $where = ['ub.deleted_at IS NULL'];
     $params = [];
-    foreach (['seller_id', 'book_id', 'status', 'listing_type'] as $col) {
-        if (isset($_GET[$col]) && $_GET[$col] !== '') { $where[] = "`{$col}` = :{$col}"; $params[$col] = $_GET[$col]; }
+    foreach (['seller_id', 'book_id', 'status'] as $col) {
+        if (isset($_GET[$col]) && $_GET[$col] !== '') { $where[] = "ub.`{$col}` = :{$col}"; $params[$col] = $_GET[$col]; }
     }
-    if (isset($_GET['id'])) { $where[] = 'inventory_id = :id'; $params['id'] = (int) $_GET['id']; }
+    if (isset($_GET['condition']) && $_GET['condition'] !== '') {
+        $rawCond = strtolower(trim((string) $_GET['condition']));
+        $condMap = ['new' => 'New', 'good' => 'Good', 'acceptable' => 'Acceptable'];
+        if (isset($condMap[$rawCond])) {
+            $where[] = "ub.`condition` = :condition";
+            $params['condition'] = $condMap[$rawCond];
+        }
+    }
+    if (isset($_GET['listing_type']) && $_GET['listing_type'] !== '') {
+        $lt = strtolower(trim((string) $_GET['listing_type']));
+        if ($lt === 'for_sale' || $lt === 'for sale' || $lt === 'sale') {
+            $where[] = "(ub.listing_type = 'For_sale' OR ub.listing_type = 'Both')";
+        } elseif ($lt === 'for_trade' || $lt === 'for trade' || $lt === 'trade') {
+            $where[] = "(ub.listing_type = 'For_trade' OR ub.listing_type = 'Both')";
+        } elseif ($lt === 'both') {
+            $where[] = "ub.listing_type = 'Both'";
+        } else {
+            $where[] = "ub.listing_type = :listing_type";
+            $params['listing_type'] = (string) $_GET['listing_type'];
+        }
+    }
+    if (isset($_GET['id'])) { $where[] = 'ub.inventory_id = :id'; $params['id'] = (int) $_GET['id']; }
+    if (isset($_GET['min_price']) && is_numeric($_GET['min_price'])) {
+        $where[] = 'ub.price >= :min_price';
+        $params['min_price'] = (float) $_GET['min_price'];
+    }
+    if (isset($_GET['max_price']) && is_numeric($_GET['max_price'])) {
+        $where[] = 'ub.price <= :max_price';
+        $params['max_price'] = (float) $_GET['max_price'];
+    }
+
+    $search = trim((string) ($_GET['search'] ?? $_GET['q'] ?? ''));
+    $categoryId = !empty($_GET['category_id']) ? (int) $_GET['category_id'] : null;
+
+    if ($search !== '') {
+        $searchLower = mb_strtolower($search, 'UTF-8');
+        $cleanIsbn = strtoupper(preg_replace('/[\s-]+/', '', $search));
+        $where[] = 'EXISTS (SELECT 1 FROM `BOOKS_CATALOG` bc WHERE bc.book_id = ub.book_id AND bc.deleted_at IS NULL AND (LOWER(bc.title) LIKE :s_title OR LOWER(bc.author) LIKE :s_author OR LOWER(bc.isbn) LIKE :s_isbn' . ($cleanIsbn !== '' ? ' OR REPLACE(REPLACE(bc.isbn, "-", ""), " ", "") LIKE :s_clean_isbn' : '') . '))';
+        $params['s_title'] = "%{$searchLower}%";
+        $params['s_author'] = "%{$searchLower}%";
+        $params['s_isbn'] = "%{$searchLower}%";
+        if ($cleanIsbn !== '') $params['s_clean_isbn'] = "%{$cleanIsbn}%";
+    }
+
+    if ($categoryId !== null) {
+        $where[] = 'EXISTS (SELECT 1 FROM `BOOKS_CATALOG` bc WHERE bc.book_id = ub.book_id AND bc.deleted_at IS NULL AND (bc.category_id = :cat_id OR bc.book_id IN (SELECT book_id FROM `BOOK_CATEGORY_MAP` WHERE category_id = :cat_map_id AND deleted_at IS NULL)))';
+        $params['cat_id'] = $categoryId;
+        $params['cat_map_id'] = $categoryId;
+    }
+
     $limit = min(1000, max(1, (int) ($_GET['limit'] ?? 1000)));
     $offset = max(0, (int) ($_GET['offset'] ?? 0));
-    $sql = "SELECT inventory_id, book_id, seller_id, listing_type, price, `condition`, status, listed_at,
-                   (cover_image IS NOT NULL AND cover_image <> '') AS has_cover,
-                   CRC32(cover_image) AS cover_v
-            FROM `USER_BOOKS` WHERE " . implode(' AND ', $where) . "
-            ORDER BY inventory_id ASC LIMIT {$limit} OFFSET {$offset}";
+    $sql = "SELECT ub.inventory_id, ub.book_id, ub.seller_id, ub.listing_type, ub.price, ub.`condition`, ub.status, ub.listed_at,
+                   (ub.cover_image IS NOT NULL AND ub.cover_image <> '') AS has_cover,
+                   CRC32(ub.cover_image) AS cover_v
+            FROM `USER_BOOKS` ub WHERE " . implode(' AND ', $where) . "
+            ORDER BY ub.inventory_id ASC LIMIT {$limit} OFFSET {$offset}";
     try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);

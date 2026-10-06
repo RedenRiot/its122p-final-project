@@ -145,37 +145,29 @@ function updateAuthStatusUI() {
 
 
 function requireAuthenticatedCustomer() {
+    if (document.documentElement.hasAttribute("data-public-page")) {
+        return true;
+    }
 
     if (!currentUser) {
-
         alert(
             "Please login or register first."
         );
-
         window.location.href =
             "login.html";
-
         return false;
-
     }
 
-
     if (currentUser.role !== "Customer") {
-
         alert(
             "This page currently supports Customer accounts only."
         );
-
         window.location.href =
             "login.html";
-
         return false;
-
     }
 
-
     return true;
-
 }
 
 
@@ -416,19 +408,17 @@ function renderBooks(listings) {
 
 
     /* No books found */
-
     if (listings.length === 0) {
-
         bookList.innerHTML = `
             <tr>
-                <td colspan="10">
-                    No books found.
+                <td colspan="10" style="text-align: center; padding: 42px 16px;">
+                    <p style="font-size: 16px; font-weight: 700; color: var(--ink); margin: 0 0 6px;">No books found matching your filters</p>
+                    <p style="font-size: 13.5px; color: var(--muted); margin: 0 0 16px;">Try adjusting your keywords, author, or ISBN, or reset your current filters.</p>
+                    <button type="button" class="btn-clear" onclick="if(window.clearFilters){window.clearFilters();}else{const f=document.getElementById('search-form');if(f)f.reset();if(typeof filterBooks==='function')filterBooks();}">Clear all filters</button>
                 </td>
             </tr>
         `;
-
         return;
-
     }
 
 
@@ -601,113 +591,131 @@ function renderBooks(listings) {
 
 /* SEARCH AND FILTER BOOKS */
 
+function normalizeSearchText(str) {
+    return String(str || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+}
+
+function debounce(fn, wait = 150) {
+    let timer;
+    return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), wait);
+    };
+}
+
 function filterBooks() {
+    const searchEl = document.getElementById("search-book");
+    const typeEl = document.getElementById("filter-type");
+    const condEl = document.getElementById("filter-condition");
 
-    const searchValue =
-        document
-            .getElementById("search-book")
-            .value
-            .toLowerCase()
-            .trim();
+    const rawSearch = searchEl ? searchEl.value : "";
+    const searchValue = normalizeSearchText(rawSearch);
+    const searchTokens = searchValue.split(/\s+/).filter(Boolean);
 
+    const listingType = typeEl ? typeEl.value : "";
+    const condition = condEl ? condEl.value : "";
+    const selectedCategoryIds = getSelectedFilterCategoryIds();
 
-    const listingType =
-        document
-            .getElementById("filter-type")
-            .value;
+    const filtered = (bookListings || []).filter(function (listing) {
+        if (!listing) return false;
 
+        const book = (typeof bookMap !== "undefined" && bookMap) ? bookMap[listing.book_id] : null;
+        const seller = (typeof userMap !== "undefined" && userMap) ? userMap[listing.seller_id] : null;
 
-    const condition =
-        document
-            .getElementById("filter-condition")
-            .value;
+        /* 1. Multi-token Search Matching */
+        let matchesSearch = true;
+        if (searchTokens.length > 0) {
+            const title = book ? normalizeSearchText(book.title) : "";
+            const author = book ? normalizeSearchText(book.author) : "";
+            const isbn = book && book.isbn ? String(book.isbn).toLowerCase() : "";
+            const cleanIsbn = isbn.replace(/[\s-]+/g, "");
+            const sellerName = seller ? normalizeSearchText(seller.username) : "";
 
-
-    const selectedCategoryIds =
-        getSelectedFilterCategoryIds();
-
-
-    const filtered =
-        bookListings.filter(
-            function (listing) {
-
-                const book =
-                    bookMap[listing.book_id];
-
-
-                const title =
-                    book
-                        ? book.title.toLowerCase()
-                        : "";
-
-
-                const author =
-                    book
-                        ? book.author.toLowerCase()
-                        : "";
-
-
-                /* Check search text */
-
-                const matchesSearch =
-
-                    title.includes(searchValue) ||
-
-                    author.includes(searchValue);
-
-
-                /* Check listing type */
-
-                const matchesType =
-
-                    listingType === "" ||
-
-                    listing.listing_type ===
-                    listingType;
-
-
-                /* Check condition */
-
-                const matchesCondition =
-
-                    condition === "" ||
-
-                    listing.condition ===
-                    condition;
-
-
-                /* Check category - book must have at least one of the
-                   checked categories (no boxes checked = match everything) */
-
-                const bookCategoryIds =
-                    (book && Array.isArray(book.category_ids))
-                        ? book.category_ids
-                        : [];
-
-                const matchesCategory =
-
-                    selectedCategoryIds.length === 0 ||
-
-                    bookCategoryIds.some(function (categoryId) {
-                        return selectedCategoryIds.includes(categoryId);
-                    });
-
-
-                /* Book must pass all filters */
-
-                return (
-                    matchesSearch &&
-                    matchesType &&
-                    matchesCondition &&
-                    matchesCategory
-                );
-
+            const bookCatIds = [];
+            if (book && Array.isArray(book.category_ids)) {
+                bookCatIds.push(...book.category_ids);
             }
-        );
+            if (book && book.category_id) {
+                bookCatIds.push(book.category_id);
+            }
+            const catNames = (typeof categoryMap !== "undefined" && categoryMap)
+                ? bookCatIds.map(id => normalizeSearchText(categoryMap[id])).filter(Boolean)
+                : [];
 
+            const typeLabel = normalizeSearchText(
+                listing.listing_type === "For_sale" ? "for sale" :
+                listing.listing_type === "For_trade" ? "for trade" :
+                "sale trade both"
+            );
+            const conditionLabel = normalizeSearchText(listing.condition);
+
+            const corpus = [
+                title,
+                author,
+                isbn,
+                cleanIsbn,
+                sellerName,
+                `@${sellerName}`,
+                ...catNames,
+                typeLabel,
+                conditionLabel
+            ].join(" ");
+
+            matchesSearch = searchTokens.every(function (token) {
+                const cleanToken = token.replace(/[\s-]+/g, "");
+                return corpus.includes(token) || (cleanToken.length >= 4 && cleanIsbn.includes(cleanToken));
+            });
+        }
+
+        /* 2. Listing Type Matching (properly includes 'Both') */
+        let matchesType = true;
+        if (listingType) {
+            const normType = String(listingType).toLowerCase();
+            const lType = String(listing.listing_type || "").toLowerCase();
+            if (normType === "for_sale" || normType === "sale") {
+                matchesType = lType === "for_sale" || lType === "both";
+            } else if (normType === "for_trade" || normType === "trade") {
+                matchesType = lType === "for_trade" || lType === "both";
+            } else if (normType === "both") {
+                matchesType = lType === "both";
+            }
+        }
+
+        /* 3. Condition Matching */
+        let matchesCondition = true;
+        if (condition) {
+            matchesCondition = String(listing.condition || "").toLowerCase() === condition.toLowerCase();
+        }
+
+        /* 4. Category Matching (matches any checked category) */
+        let matchesCategory = true;
+        if (selectedCategoryIds.length > 0) {
+            const bookCatIds = [];
+            if (book && Array.isArray(book.category_ids)) {
+                bookCatIds.push(...book.category_ids);
+            }
+            if (book && book.category_id) {
+                bookCatIds.push(book.category_id);
+            }
+            const numericBookCatIds = bookCatIds.map(Number);
+            matchesCategory = selectedCategoryIds.some(function (selectedId) {
+                return numericBookCatIds.includes(Number(selectedId));
+            });
+        }
+
+        return (
+            matchesSearch &&
+            matchesType &&
+            matchesCondition &&
+            matchesCategory
+        );
+    });
 
     renderBooks(filtered);
-
 }
 
 
@@ -1755,7 +1763,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     searchForm?.addEventListener("submit", event => { event.preventDefault(); filterBooks(); });
     document.getElementById("filter-type")?.addEventListener("change", filterBooks);
     document.getElementById("filter-condition")?.addEventListener("change", filterBooks);
-    document.getElementById("search-book")?.addEventListener("input", filterBooks);
+    const debouncedFilter = debounce(filterBooks, 150);
+    document.getElementById("search-book")?.addEventListener("input", debouncedFilter);
     document.getElementById("list-book-form")?.addEventListener("submit", submitBookListing);
     document.getElementById("refund-form")?.addEventListener("submit", submitRefund);
     document.getElementById("report-form")?.addEventListener("submit", submitReport);
@@ -1769,6 +1778,63 @@ document.addEventListener("DOMContentLoaded", async function () {
     if (hasRefundPicker) await loadRefundOptions();
     if (hasTransactions) await loadTransactions();
     if (hasCategories) await loadCategories();
+
+    if (hasBrowse) {
+        const params = new URLSearchParams(window.location.search);
+        const urlSearch = params.get("search") || params.get("q");
+        const urlCategory = params.get("category");
+        const urlType = params.get("type") || params.get("listing_type");
+        const urlCondition = params.get("condition");
+        let shouldFilter = false;
+
+        if (urlSearch) {
+            const searchInput = document.getElementById("search-book");
+            if (searchInput) {
+                searchInput.value = urlSearch;
+                shouldFilter = true;
+            }
+        }
+        if (urlType) {
+            const typeEl = document.getElementById("filter-type");
+            if (typeEl) {
+                const normType = urlType.trim().toLowerCase().replace(/[\s-]+/g, "_");
+                for (const opt of typeEl.options) {
+                    const optVal = opt.value.toLowerCase();
+                    const optText = opt.textContent.trim().toLowerCase();
+                    if (optVal === normType || optText.replace(/\s+/g, "_") === normType || (normType === "sale" && optVal === "for_sale") || (normType === "trade" && optVal === "for_trade")) {
+                        typeEl.value = opt.value;
+                        shouldFilter = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (urlCondition) {
+            const condEl = document.getElementById("filter-condition");
+            if (condEl) {
+                const normCond = urlCondition.trim().toLowerCase();
+                for (const opt of condEl.options) {
+                    if (opt.value.toLowerCase() === normCond || opt.textContent.trim().toLowerCase() === normCond) {
+                        condEl.value = opt.value;
+                        shouldFilter = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (urlCategory) {
+            const catBoxes = document.querySelectorAll('#filter-category-options input[type="checkbox"]');
+            const targetCat = normalizeSearchText(urlCategory);
+            catBoxes.forEach(box => {
+                const label = box.closest('label');
+                if (label && normalizeSearchText(label.textContent).includes(targetCat)) {
+                    box.checked = true;
+                    shouldFilter = true;
+                }
+            });
+        }
+        if (shouldFilter) filterBooks();
+    }
 });
 
 

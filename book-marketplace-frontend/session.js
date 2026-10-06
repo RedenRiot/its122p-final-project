@@ -4,22 +4,8 @@
     const TOKEN_KEY = "librowseSessionToken";
     const USER_KEY = "librowseCurrentUser";
 
-    document.documentElement.classList.add("librowse-auth-pending");
-    const style = document.createElement("style");
-    style.textContent = [
-        'html.librowse-auth-pending body{visibility:hidden!important}',
-        'html.librowse-auth-ready body{visibility:visible!important}',
-        '#librowse-boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#f4eadd;color:#6b5040;font:600 15px "Nunito Sans",system-ui,sans-serif;text-align:center;padding:24px}',
-        'html.librowse-auth-ready #librowse-boot{display:none}',
-        '#librowse-boot .lb-spin{width:34px;height:34px;border:3px solid #e3cfb6;border-top-color:#9a7458;border-radius:50%;animation:lbspin .8s linear infinite}',
-        '#librowse-boot button{margin:0;padding:10px 22px;border:0;border-radius:999px;background:#9a7458;color:#fffaf3;font:inherit;cursor:pointer}',
-        '@keyframes lbspin{to{transform:rotate(360deg)}}',
-        '@media (prefers-reduced-motion:reduce){#librowse-boot .lb-spin{animation-duration:2.4s}}'
-    ].join('');
-    document.head.appendChild(style);
+    const isPublicPage = document.documentElement.hasAttribute("data-public-page");
 
-    /* Visible "loading" screen while the session is checked (the page itself
-       stays hidden so nobody sees content they aren't allowed to see). */
     function showBoot(message, withRetry) {
         let boot = document.getElementById('librowse-boot');
         if (!boot) {
@@ -34,10 +20,26 @@
             : '<div class="lb-spin" aria-hidden="true"></div><span></span>';
         boot.querySelector('span').textContent = message;
         boot.querySelector('button')?.addEventListener('click', () => {
-            window.librowseAuthReady = validateSession(true);
+            window.librowseAuthReady = validateSession(!isPublicPage);
         });
     }
-    showBoot('Opening Librowse…');
+
+    if (!isPublicPage) {
+        document.documentElement.classList.add("librowse-auth-pending");
+        const style = document.createElement("style");
+        style.textContent = [
+            'html.librowse-auth-pending body{visibility:hidden!important}',
+            'html.librowse-auth-ready body{visibility:visible!important}',
+            '#librowse-boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#f4eadd;color:#6b5040;font:600 15px "Nunito Sans",system-ui,sans-serif;text-align:center;padding:24px}',
+            'html.librowse-auth-ready #librowse-boot{display:none}',
+            '#librowse-boot .lb-spin{width:34px;height:34px;border:3px solid #e3cfb6;border-top-color:#9a7458;border-radius:50%;animation:lbspin .8s linear infinite}',
+            '#librowse-boot button{margin:0;padding:10px 22px;border:0;border-radius:999px;background:#9a7458;color:#fffaf3;font:inherit;cursor:pointer}',
+            '@keyframes lbspin{to{transform:rotate(360deg)}}',
+            '@media (prefers-reduced-motion:reduce){#librowse-boot .lb-spin{animation-duration:2.4s}}'
+        ].join('');
+        document.head.appendChild(style);
+        showBoot('Opening Librowse…');
+    }
 
     function getToken() { return sessionStorage.getItem(TOKEN_KEY); }
     function getUser() {
@@ -56,13 +58,20 @@
     }
 
     async function validateSession(redirect = true) {
-        document.documentElement.classList.add("librowse-auth-pending");
-        document.documentElement.classList.remove("librowse-auth-ready");
-        showBoot('Opening Librowse…');
+        if (!isPublicPage) {
+            document.documentElement.classList.add("librowse-auth-pending");
+            document.documentElement.classList.remove("librowse-auth-ready");
+            showBoot('Opening Librowse…');
+        }
         const token = getToken();
         if (!token) {
             clearSession();
-            if (redirect) window.location.replace("login.html");
+            if (redirect) {
+                window.location.replace("login.html");
+            } else {
+                document.documentElement.classList.remove("librowse-auth-pending");
+                document.documentElement.classList.add("librowse-auth-ready");
+            }
             return null;
         }
         try {
@@ -83,11 +92,21 @@
             // Can't reach the server: keep the session and offer a retry
             // instead of logging the person out.
             if (error instanceof TypeError) {
-                showBoot("We couldn't reach Librowse. Check your connection and try again.", true);
+                if (redirect) {
+                    showBoot("We couldn't reach Librowse. Check your connection and try again.", true);
+                } else {
+                    document.documentElement.classList.remove("librowse-auth-pending");
+                    document.documentElement.classList.add("librowse-auth-ready");
+                }
                 return null;
             }
             clearSession();
-            if (redirect) window.location.replace("login.html");
+            if (redirect) {
+                window.location.replace("login.html");
+            } else {
+                document.documentElement.classList.remove("librowse-auth-pending");
+                document.documentElement.classList.add("librowse-auth-ready");
+            }
             return null;
         }
     }
@@ -119,11 +138,11 @@
     }
 
     window.librowseAuth = { API_BASE, getToken, getUser, saveSession, clearSession, validateSession, requireRole, logout };
-    window.librowseAuthReady = validateSession(true);
+    window.librowseAuthReady = validateSession(!isPublicPage);
 
     window.addEventListener("pageshow", function (event) {
         // Only re-check when the page comes back from the back/forward cache
         // (e.g. after logging out); a normal load was already checked above.
-        if (event.persisted) window.librowseAuthReady = validateSession(true);
+        if (event.persisted) window.librowseAuthReady = validateSession(!isPublicPage);
     });
 })();

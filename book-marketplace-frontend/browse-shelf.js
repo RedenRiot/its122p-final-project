@@ -27,9 +27,9 @@
     let mineGroup = "active";        // active | removed | history (inside "Only my listings")
     const mineTabs = document.getElementById("mine-tabs");
     function groupOf(l) {
-        const st = l.status || "Available";
-        if (st === "Removed") return "removed";
-        if (st === "Sold" || st === "Traded") return "history";
+        const st = String(l.status || "Available").toLowerCase();
+        if (st === "removed") return "removed";
+        if (st === "sold" || st === "traded") return "history";
         return "active";             // Available + On hold (pending request)
     }
     const selected = new Set();      // inventory_ids picked in that mode
@@ -37,9 +37,9 @@
 
     /* Sold, traded and on-hold books are taken off the shelves automatically.
        Sellers still see their own via "Only my listings". */
-    function isAvailable(l) { return (l.status || "Available") === "Available"; }
-    function forSale(l) { return l.listing_type === "For_sale" || l.listing_type === "Both"; }
-    function forTrade(l) { return l.listing_type === "For_trade" || l.listing_type === "Both"; }
+    function isAvailable(l) { return String(l.status || "Available").toLowerCase() === "available"; }
+    function forSale(l) { const t = String(l.listing_type || "").toLowerCase(); return t === "for_sale" || t === "both"; }
+    function forTrade(l) { const t = String(l.listing_type || "").toLowerCase(); return t === "for_trade" || t === "both"; }
 
     function esc(s) {
         return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -60,11 +60,12 @@
         return `${cat} ${String(listing.inventory_id).padStart(4, "0")} ${author}`;
     }
     function statusInfo(listing) {
-        const s = listing.status || "Available";
-        if (s === "Available") return { label: "Available", out: false };
-        if (s === "In_transaction") return { label: "On hold", out: true };
-        if (s === "Sold") return { label: "Sold", out: true };
-        if (s === "Traded") return { label: "Traded", out: true };
+        const s = String(listing.status || "Available");
+        const lower = s.toLowerCase();
+        if (lower === "available") return { label: "Available", out: false };
+        if (lower === "in_transaction") return { label: "On hold", out: true };
+        if (lower === "sold") return { label: "Sold", out: true };
+        if (lower === "traded") return { label: "Traded", out: true };
         return { label: s.replace("_", " "), out: true };
     }
     function shortPrice(listing) {
@@ -72,7 +73,8 @@
         return "₱" + Number(listing.price).toLocaleString("en-PH", { maximumFractionDigits: 0 });
     }
     function typeRibbon(type) {
-        return type === "For_sale" ? "For sale" : type === "For_trade" ? "For trade" : "Sale or trade";
+        const t = String(type || "").toLowerCase();
+        return t === "for_sale" ? "For sale" : t === "for_trade" ? "For trade" : "Sale or trade";
     }
 
     /* ---------- sort + "only mine" (applied to both views) ---------- */
@@ -181,6 +183,7 @@
         setTypeFilter("all", false);
         filterBooks();
     }
+    window.clearFilters = clearFilters;
 
     /* Wrap script.js renderBooks so both views stay in sync */
     const originalRender = window.renderBooks || renderBooks;

@@ -146,7 +146,40 @@ try {
                 $row['category_ids'] = $categoryMap[(int) $row['book_id']] ?? [(int) $row['category_id']];
                 Response::json($row);
             } else {
-                $rows = $crud->index($_GET);
+                $search = trim((string) ($_GET['search'] ?? $_GET['q'] ?? ''));
+                $categoryId = !empty($_GET['category_id']) ? (int) $_GET['category_id'] : null;
+
+                if ($search !== '' || $categoryId !== null) {
+                    $where = ['b.deleted_at IS NULL'];
+                    $params = [];
+
+                    if ($search !== '') {
+                        $searchLower = mb_strtolower($search, 'UTF-8');
+                        $cleanIsbn = strtoupper(preg_replace('/[\s-]+/', '', $search));
+                        $where[] = '(LOWER(b.title) LIKE :s_title OR LOWER(b.author) LIKE :s_author OR LOWER(b.isbn) LIKE :s_isbn' . ($cleanIsbn !== '' ? ' OR REPLACE(REPLACE(b.isbn, "-", ""), " ", "") LIKE :s_clean_isbn' : '') . ')';
+                        $params['s_title'] = "%{$searchLower}%";
+                        $params['s_author'] = "%{$searchLower}%";
+                        $params['s_isbn'] = "%{$searchLower}%";
+                        if ($cleanIsbn !== '') $params['s_clean_isbn'] = "%{$cleanIsbn}%";
+                    }
+
+                    if ($categoryId !== null) {
+                        $where[] = '(b.category_id = :cat_id OR b.book_id IN (SELECT book_id FROM `BOOK_CATEGORY_MAP` WHERE category_id = :cat_map_id AND deleted_at IS NULL))';
+                        $params['cat_id'] = $categoryId;
+                        $params['cat_map_id'] = $categoryId;
+                    }
+
+                    $limit = isset($_GET['limit']) ? min(1000, max(1, (int) $_GET['limit'])) : 500;
+                    $offset = isset($_GET['offset']) ? max(0, (int) $_GET['offset']) : 0;
+
+                    $sql = "SELECT b.* FROM `BOOKS_CATALOG` b WHERE " . implode(' AND ', $where) . " ORDER BY b.book_id ASC LIMIT {$limit} OFFSET {$offset}";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    $rows = $stmt->fetchAll();
+                } else {
+                    $rows = $crud->index($_GET);
+                }
+
                 $categoryMap = fetch_category_ids($pdo, array_column($rows, 'book_id'));
                 foreach ($rows as &$row) {
                     $row['category_ids'] = $categoryMap[(int) $row['book_id']] ?? [(int) $row['category_id']];
