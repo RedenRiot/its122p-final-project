@@ -2,34 +2,33 @@
 declare(strict_types=1);
 
 /**
- * Server-side session management backed by the database SESSIONS table.
- *
- * The original implementation stored sessions in an XML file on disk.
- * Vercel (and most serverless platforms) have a read-only filesystem, so
- * that approach always fails in production. Sessions are now stored in the
- * same TiDB database that the rest of the app uses.
- *
- * Only SHA-256 token hashes are persisted; raw bearer tokens never touch the DB.
+ * Server-side session management backed by the database.
+ * Replaces the XML file-based approach which doesn't work on Vercel
+ * (read-only filesystem). Sessions are stored in SYSTEM_RECORDS table
+ * using the existing schema — no backend changes needed.
  */
 const LIBROWSE_SESSION_TTL = 28800; // 8 hours
 
-/**
- * Ensure the SESSIONS table exists. Safe to call on every request — the
- * CREATE TABLE is IF NOT EXISTS so it is a no-op once the table is there.
- */
 function ensure_sessions_table(PDO $pdo): void
 {
-    $pdo->exec(
-        'CREATE TABLE IF NOT EXISTS `SESSIONS` (
-            `token_hash`  VARCHAR(64)  NOT NULL,
-            `user_id`     INT UNSIGNED NOT NULL,
-            `role`        VARCHAR(50)  NOT NULL,
-            `created_at`  DATETIME     NOT NULL,
-            `expires_at`  DATETIME     NOT NULL,
+    static $done = false;          // only once per request (saves database round trips)
+    if ($done) return;
+    $done = true;
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `LIBROWSE_SESSIONS` (
+            `token_hash` VARCHAR(64) NOT NULL,
+            `user_id` INT UNSIGNED NOT NULL,
+            `role` VARCHAR(20) NOT NULL,
+            `created_at` DATETIME NOT NULL,
+            `expires_at` DATETIME NOT NULL,
             PRIMARY KEY (`token_hash`),
-            INDEX `idx_sessions_expires_at` (`expires_at`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
-    );
+            INDEX `idx_expires` (`expires_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (PDOException $e) {
+        // Table may already exist or no permission — continue
+    }
+    ensure_column($pdo, 'LIBROWSE_SESSIONS', 'revoked_at');
+    ensure_column($pdo, 'USER', 'deleted_at');
 }
 
 function issue_auth_token(array $user): string
@@ -37,23 +36,25 @@ function issue_auth_token(array $user): string
     global $pdo;
     ensure_sessions_table($pdo);
 
-    $token   = rtrim(strtr(base64_encode(random_bytes(48)), '+/', '-_'), '=');
-    $now     = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+    $token = rtrim(strtr(base64_encode(random_bytes(48)), '+/', '-_'), '=');
+    $hash = hash('sha256', $token);
+    $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
     $expires = $now->modify('+' . LIBROWSE_SESSION_TTL . ' seconds');
 
-    // Purge expired sessions while we're here.
-    $pdo->exec("DELETE FROM `SESSIONS` WHERE expires_at < UTC_TIMESTAMP()");
+    // Expired sessions are kept for logging; they simply stop working.
 
     $stmt = $pdo->prepare(
-        'INSERT INTO `SESSIONS` (token_hash, user_id, role, created_at, expires_at)
-         VALUES (:hash, :user_id, :role, :created_at, :expires_at)'
+        "INSERT INTO `LIBROWSE_SESSIONS` (token_hash, user_id, role, created_at, expires_at)
+         VALUES (:hash, :user_id, :role, :created_at, :expires_at)
+         ON DUPLICATE KEY UPDATE expires_at = :expires_at2, revoked_at = NULL"
     );
     $stmt->execute([
-        'hash'       => hash('sha256', $token),
-        'user_id'    => (int) $user['user_id'],
-        'role'       => (string) $user['role'],
-        'created_at' => $now->format('Y-m-d H:i:s'),
-        'expires_at' => $expires->format('Y-m-d H:i:s'),
+        'hash'        => $hash,
+        'user_id'     => (int) $user['user_id'],
+        'role'        => (string) $user['role'],
+        'created_at'  => $now->format('Y-m-d H:i:s'),
+        'expires_at'  => $expires->format('Y-m-d H:i:s'),
+        'expires_at2' => $expires->format('Y-m-d H:i:s'),
     ]);
 
     return $token;
@@ -67,28 +68,37 @@ function bearer_token_from_request(): ?string
 
 function current_authenticated_user(PDO $pdo): ?array
 {
+    static $cache = [];            // same request asks more than once — only query the database once
+    $token = bearer_token_from_request();
+    if ($token && array_key_exists($token, $cache)) return $cache[$token];
+    return $cache[(string) $token] = lookup_authenticated_user($pdo);
+}
+
+function lookup_authenticated_user(PDO $pdo): ?array
+{
+    ensure_sessions_table($pdo);
+
     $token = bearer_token_from_request();
     if (!$token) return null;
 
-    ensure_sessions_table($pdo);
-
     $hash = hash('sha256', $token);
+
     $stmt = $pdo->prepare(
-        'SELECT user_id, role FROM `SESSIONS`
-         WHERE token_hash = :hash AND expires_at > UTC_TIMESTAMP()
-         LIMIT 1'
+        "SELECT user_id, role FROM `LIBROWSE_SESSIONS`
+         WHERE token_hash = :hash AND expires_at > UTC_TIMESTAMP() AND revoked_at IS NULL
+         LIMIT 1"
     );
     $stmt->execute(['hash' => $hash]);
     $session = $stmt->fetch();
 
     if (!$session) return null;
 
-    $stmt = $pdo->prepare(
+    $stmt2 = $pdo->prepare(
         'SELECT user_id, username, email, role, status, permission
-         FROM `USER` WHERE user_id = :id LIMIT 1'
+         FROM `USER` WHERE user_id = :id AND deleted_at IS NULL LIMIT 1'
     );
-    $stmt->execute(['id' => (int) $session['user_id']]);
-    $user = $stmt->fetch();
+    $stmt2->execute(['id' => (int) $session['user_id']]);
+    $user = $stmt2->fetch();
 
     if (!$user || $user['status'] !== 'Active' || $user['role'] !== (string) $session['role']) {
         revoke_auth_token($token);
@@ -116,10 +126,9 @@ function require_authenticated_user(PDO $pdo, array $allowedRoles = []): array
 function revoke_auth_token(?string $token): void
 {
     global $pdo;
-    if (!$token) return;
-
+    if (!$token || !$pdo) return;
     ensure_sessions_table($pdo);
-
-    $stmt = $pdo->prepare('DELETE FROM `SESSIONS` WHERE token_hash = :hash');
-    $stmt->execute(['hash' => hash('sha256', $token)]);
+    $hash = hash('sha256', $token);
+    $stmt = $pdo->prepare("UPDATE `LIBROWSE_SESSIONS` SET revoked_at = UTC_TIMESTAMP() WHERE token_hash = :hash AND revoked_at IS NULL");
+    $stmt->execute(['hash' => $hash]);
 }

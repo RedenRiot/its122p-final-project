@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Courier+Prime:wght@400;700&display=swap">
     <title>Librowse Dashboard</title>
+    <link rel="stylesheet" href="style.css">
     <script src="session.js"></script>
 </head>
-<body style="font-family:Arial,sans-serif;background:#f4f6f9;padding:40px;">
-<main style="max-width:620px;margin:auto;background:#fff;padding:30px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);">
-    <h1 id="welcomeTitle">Opening dashboard…</h1>
-    <p id="roleDisplay">Checking your account role…</p>
+<body>
+<main>
+    <section class="router-card">
+        <h2 id="welcomeTitle">Opening dashboard…</h2>
+        <p id="roleDisplay">Checking your account role…</p>
+    </section>
 </main>
 <script>
 (async function () {
@@ -18,7 +24,7 @@
     document.getElementById('welcomeTitle').textContent = `Welcome back, ${user.username}!`;
     document.getElementById('roleDisplay').textContent = `Opening ${String(user.role || '').toLowerCase()} dashboard…`;
     const role = String(user.role || '').toLowerCase();
-    window.location.replace(role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'transactions.html');
+    window.location.replace(role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'customer-dashboard.html');
 })();
 </script>
 </body>

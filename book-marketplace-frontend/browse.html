@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Courier+Prime:wght@400;700&display=swap">
     <link rel="stylesheet" href="style.css">
     <title>Browse Books - Librowse</title>
     <script src="session.js"></script>
@@ -10,15 +13,12 @@
 <body>
 <header>
     <h1>Librowse Book Exchange</h1>
-    <p>Buy, trade, and exchange books with other users.</p>
     <nav>
         <a href="index.html">Home</a>
-        <a href="browse.html">Browse Books</a>
+        <a href="browse.html" class="active-nav" aria-current="page">Browse Books</a>
         <a href="list-book.html">List a Book</a>
-        <a href="transactions.html">Dashboard</a>
+        <a href="customer-dashboard.html">Dashboard</a>
         <a href="support.html">Refund &amp; Report</a>
-        <a href="login.html">Login</a>
-        <a href="register.html">Register</a>
     </nav>
     <div id="auth-status" class="auth-status">
         <a href="login.html">Sign in</a>
@@ -29,26 +29,21 @@
 <!-- BROWSE BOOKS -->
         <section id="browse">
 
-            <h2>Browse Books</h2>
+            <img class="section-icon" src="assets/icon-search.svg" alt="" width="52" height="52">
+        <h2>The Stacks</h2>
 
-            <p>
-                Search and view books currently listed by other users.
-            </p>
+            <p>Wander the shelves, pull out a book to see its catalog card, then buy it or offer a trade.</p>
 
 
             <!-- Search -->
             <form id="search-form">
 
-                <label for="search-book">
-                    Search:
-                </label>
+                <label for="search-book">Search</label>
 
                 <input type="text" id="search-book" name="search" placeholder="Search by book title or author">
 
 
-                <label for="filter-type">
-                    Listing Type:
-                </label>
+                <label for="filter-type">Listing Type</label>
 
                 <select id="filter-type" name="listing_type">
 
@@ -71,9 +66,7 @@
                 </select>
 
 
-                <label for="filter-condition">
-                    Condition:
-                </label>
+                <label for="filter-condition">Condition</label>
 
                 <select id="filter-condition" name="condition">
 
@@ -98,9 +91,7 @@
 
                 <fieldset id="filter-category-group" class="checkbox-group">
 
-                    <legend>
-                        Category (check any to filter):
-                    </legend>
+                    <legend>Category</legend>
 
                     <div id="filter-category-options">
 
@@ -114,13 +105,61 @@
 
 
                 <button type="submit">
-                    Search
+                    Search the catalog
                 </button>
 
             </form>
 
 
-            <!-- Books table (populated by JavaScript) -->
+
+            <!-- Quick filters: what is the book listed for? -->
+            <div class="type-filter" role="group" aria-label="Show books that are">
+                <button type="button" class="type-chip active" data-type="all" aria-pressed="true">All books <span class="chip-count" id="count-all">0</span></button>
+                <button type="button" class="type-chip" data-type="sale" aria-pressed="false">For sale <span class="chip-count" id="count-sale">0</span></button>
+                <button type="button" class="type-chip" data-type="trade" aria-pressed="false">For trade <span class="chip-count" id="count-trade">0</span></button>
+            </div>
+
+            <!-- Shelf toolbar -->
+            <div class="shelf-toolbar">
+                <p id="shelf-count" class="shelf-count" role="status">Opening the stacks&hellip;</p>
+                <div class="shelf-controls">
+                    <label class="mine-toggle"><input type="checkbox" id="filter-mine"> Only my listings</label>
+                    <button type="button" id="manage-btn" class="manage-btn" aria-pressed="false">Manage my listings</button>
+                    <label class="sort-label" for="shelf-sort">Sort</label>
+                    <select id="shelf-sort">
+                        <option value="newest">Newest on the shelf</option>
+                                                <option value="title">Title A&ndash;Z</option>
+                        <option value="price-asc">Price: low to high</option>
+                        <option value="price-desc">Price: high to low</option>
+                    </select>
+                    <div class="view-toggle" role="group" aria-label="View">
+                        <button type="button" data-view="shelf" class="active" aria-pressed="true">Shelf</button>
+                        <button type="button" data-view="list" aria-pressed="false">Catalog list</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My listings, organised (shown with "Only my listings") -->
+            <div id="mine-tabs" class="mine-tabs" role="tablist" aria-label="My listings" hidden>
+                <button type="button" role="tab" class="mine-tab active" data-group="active" aria-selected="true">
+                    <span class="mine-dot dot-active"></span>On the shelves <span class="chip-count" id="mine-count-active">0</span>
+                </button>
+                <button type="button" role="tab" class="mine-tab" data-group="removed" aria-selected="false">
+                    <span class="mine-dot dot-removed"></span>Removed <span class="chip-count" id="mine-count-removed">0</span>
+                </button>
+                <button type="button" role="tab" class="mine-tab" data-group="history" aria-selected="false">
+                    <span class="mine-dot dot-history"></span>Sold &amp; traded <span class="chip-count" id="mine-count-history">0</span>
+                </button>
+            </div>
+
+            <!-- Shelf view (populated by browse-shelf.js) -->
+            <div id="bookshelf" class="bookshelf" aria-live="polite">
+                <span class="shelf-skeleton"></span><span class="shelf-skeleton"></span><span class="shelf-skeleton"></span>
+                <span class="shelf-skeleton"></span><span class="shelf-skeleton"></span><span class="shelf-skeleton"></span>
+            </div>
+
+            <!-- Catalog list view: the original table -->
+            <div id="catalog-list" class="catalog-list" hidden>
             <table>
 
                 <thead>
@@ -155,6 +194,29 @@
                 </tbody>
 
             </table>
+            </div>
+
+            <!-- Bulk actions (shown in "Manage my listings" mode) -->
+            <div id="bulk-bar" class="bulk-bar" hidden role="region" aria-label="Selected listings">
+                <div class="bulk-row" id="bulk-row">
+                    <span class="bulk-count" id="bulk-count" role="status">Tap your books to select them</span>
+                    <button type="button" class="bulk-link" id="bulk-all">Select all</button>
+                    <button type="button" class="bulk-link" id="bulk-none">Clear</button>
+                    <span class="bulk-spacer"></span>
+                    <button type="button" id="bulk-remove" class="btn-danger-solid" disabled>Remove</button>
+                    <button type="button" id="bulk-restore" disabled>Put back</button>
+                    <button type="button" id="bulk-delete" class="btn-danger-solid" disabled hidden>Delete permanently</button>
+                    <button type="button" id="bulk-done" class="btn-clear">Done</button>
+                </div>
+                <div class="bulk-row bulk-confirm" id="bulk-confirm" hidden>
+                    <span id="bulk-confirm-text"></span>
+                    <span class="bulk-spacer"></span>
+                    <button type="button" id="bulk-confirm-yes" class="btn-danger-solid">Yes, remove</button>
+                    <button type="button" id="bulk-confirm-no" class="btn-clear">Cancel</button>
+                </div>
+            </div>
+
+            <dialog id="book-dialog" class="book-dialog"></dialog>
 
         </section>
 </main>
@@ -163,5 +225,7 @@
     <p>ITS122P Final Project</p>
 </footer>
 <script src="script.js"></script>
+<script src="book-covers.js"></script>
+<script src="browse-shelf.js"></script>
 </body>
 </html>

@@ -4,12 +4,10 @@ declare(strict_types=1);
 // Kill HTML error output immediately — all errors must surface as JSON.
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
-error_reporting(E_ALL);
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 
-/**
- * Catch PHP fatal errors (which bypass try/catch) and return JSON
- * so the frontend never receives an HTML string it can't parse.
- */
+/* Catch PHP fatal errors (which bypass try/catch) and return JSON
+   so the frontend never receives an HTML string it can't parse. */
 register_shutdown_function(function (): void {
     $err = error_get_last();
     if ($err !== null && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
@@ -18,32 +16,35 @@ register_shutdown_function(function (): void {
             header('Content-Type: application/json');
         }
         $payload = ['error' => 'Server error'];
-        if (filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN)) {
+        if (getenv('APP_DEBUG') === '1') {
             $payload['details'] = $err['message'] . ' in ' . $err['file'] . ':' . $err['line'];
         }
         echo json_encode($payload);
     }
 });
 
-/**
- * CORS — allow localhost for dev and any *.vercel.app for prod.
- */
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowedOriginPattern = '#^https?://(?:localhost|127\.0\.0\.1|[^/]+\.vercel\.app)(?::\d+)?$#i';
 
-if ($origin !== '' && preg_match($allowedOriginPattern, $origin)) {
+/* Allow localhost (dev) + any *.vercel.app domain (production) */
+if ($origin !== '' && (
+    preg_match('#^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?$#i', $origin) ||
+    preg_match('#^https://[a-z0-9\-]+\.vercel\.app$#i', $origin)
+)) {
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Vary: Origin');
+} else {
+    header('Access-Control-Allow-Origin: *');
 }
+
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, Cache-Control');
 header('Access-Control-Max-Age: 600');
-header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: DENY');
-header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(204);
@@ -52,6 +53,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/Response.php';
+require_once __DIR__ . '/soft_delete.php';
+require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/Crud.php';
 require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/dispatch.php';

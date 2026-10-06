@@ -1,19 +1,22 @@
 <?php
 /**
- * /api/reports.php
- * GET (list/show), POST (create), PUT (update), DELETE
+ * /api/reports.php — reports, forms, and unlock requests.
+ *
+ *   GET     Customers: reports they submitted. Staff/Admin: all.
+ *   POST    Anyone signed in. submitted_by_id and status are set by the
+ *           server; review fields can't be filled in by the submitter.
+ *   PUT     Staff/Admin: status and resolution notes. The reviewer and the
+ *           resolved time are recorded automatically.
+ *   DELETE  Admin only (soft delete).
  */
 require_once __DIR__ . '/../lib/bootstrap.php';
 
-$user = require_authenticated_user($pdo);
-$isStaffOrAdmin = in_array($user['role'], ['Staff', 'Admin'], true);
 $method = $_SERVER['REQUEST_METHOD'];
-$id = $_GET['id'] ?? null;
+$authUser = require_authenticated_user($pdo);
+$isCustomer = !is_staff_or_admin($authUser);
+$me = (int) $authUser['user_id'];
 
-if ($method === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+const REPORT_CLOSED = ['Approved', 'Rejected', 'Resolved', 'Dismissed'];
 
 $crud = new Crud(
     pdo: $pdo,
@@ -32,77 +35,61 @@ $crud = new Crud(
         'related_entity_type' => ['User', 'Book_Listing', 'Transaction', 'None'],
         'status' => ['Pending', 'Under_Review', 'Approved', 'Rejected', 'Resolved', 'Dismissed'],
     ],
+    softDeleteColumn: 'deleted_at',
 );
 
 try {
-    switch ($method) {
-        case 'GET':
-            if ($id !== null) {
-                $row = $crud->show($id);
-                if (!$row || (!$isStaffOrAdmin && (int)$row['submitted_by_id'] !== (int)$user['user_id'])) {
-                    Response::error('Report not found or access denied.', 404);
-                }
-                Response::json($row);
-            } else {
-                if (!$isStaffOrAdmin) {
-                    $_GET['submitted_by_id'] = (string) $user['user_id'];
-                }
-                Response::json($crud->index($_GET));
-            }
-            break;
+    if ($method === 'GET' && $isCustomer) {
+        if (isset($_GET['id'])) {
+            $row = $crud->show($_GET['id']);
+            if (!$row || (int) $row['submitted_by_id'] !== $me) Response::error('Report not found.', 404);
+            Response::json($row);
+        }
+        Response::json($crud->index(['submitted_by_id' => $me, 'limit' => 1000]));
+    }
 
-        case 'POST':
-            $body = read_json_body();
-            if (!$isStaffOrAdmin) {
-                $body['submitted_by_id'] = (int) $user['user_id'];
-                $body['status'] = 'Pending';
-                unset($body['reviewed_by_id'], $body['resolution_notes'], $body['resolved_at']);
-            }
-            $created = $crud->create($body);
-            Response::json($created, 201);
-            break;
+    if ($method === 'POST') {
+        $body = request_body();
+        $formData = $body['form_data'] ?? null;
+        if (is_array($formData)) $formData = json_encode($formData, JSON_UNESCAPED_UNICODE);
+        $formData = $formData === null ? null : (string) $formData;
+        if ($formData !== null && strlen($formData) > 5000) {
+            Response::error('Please keep the report under 5000 characters.', 422);
+        }
+        Response::json($crud->create([
+            'submitted_by_id'     => $me,                       // never trust the browser for this
+            'report_category'     => $body['report_category'] ?? null,
+            'related_entity_type' => $body['related_entity_type'] ?? 'None',
+            'form_data'           => $formData,
+            'status'              => 'Pending',
+        ]), 201);
+    }
 
-        case 'PUT':
-        case 'PATCH':
-            if (!$isStaffOrAdmin) {
-                Response::error('Only Staff or Administrators can review and update reports.', 403);
-            }
-            if ($id === null) {
-                Response::error("Query parameter 'report_id' (as ?id=) is required for updates.", 400);
-            }
-            $body = read_json_body();
-            $body['reviewed_by_id'] = (int) $user['user_id'];
-            if (isset($body['status']) && in_array($body['status'], ['Approved', 'Rejected', 'Resolved', 'Dismissed'], true)) {
-                $body['resolved_at'] = gmdate('Y-m-d H:i:s');
-            }
-            $updated = $crud->update($id, $body);
-            if ($updated === null) {
-                Response::error('Report not found.', 404);
-            }
-            Response::json($updated);
-            break;
+    if ($method === 'PUT' || $method === 'PATCH') {
+        require_authenticated_user($pdo, ['Staff', 'Admin']);
+        $id = (int) ($_GET['id'] ?? 0);
+        if (!$crud->show($id)) Response::error('Report not found.', 404);
+        $body = request_body();
+        $update = ['reviewed_by_id' => $me];
+        if (array_key_exists('status', $body)) {
+            $update['status'] = $body['status'];
+            $update['resolved_at'] = in_array($body['status'], REPORT_CLOSED, true) ? now_sql() : null;
+        }
+        if (array_key_exists('resolution_notes', $body)) {
+            $notes = trim((string) $body['resolution_notes']);
+            if (text_length($notes) > 2000) Response::error('Please keep the notes under 2000 characters.', 422);
+            $update['resolution_notes'] = $notes === '' ? null : $notes;
+        }
+        Response::json($crud->update($id, $update));
+    }
 
-        case 'DELETE':
-            if ($user['role'] !== 'Admin') {
-                Response::error('Only Administrators can delete reports.', 403);
-            }
-            if ($id === null) {
-                Response::error("Query parameter 'report_id' (as ?id=) is required for deletes.", 400);
-            }
-            $ok = $crud->delete($id);
-            if (!$ok) {
-                Response::error('Report not found.', 404);
-            }
-            Response::json(['message' => 'Deleted', 'report_id' => $id]);
-            break;
-
-        default:
-            Response::error('Method not allowed.', 405);
+    if ($method === 'DELETE') {
+        require_authenticated_user($pdo, ['Admin']);
     }
 } catch (InvalidArgumentException $e) {
     Response::error($e->getMessage(), 422);
 } catch (PDOException $e) {
-    $isDebug = filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN);
-    $details = $isDebug ? ['details' => $e->getMessage()] : [];
-    Response::error('Database error.', 500, $details);
+    database_error_response($e);
 }
+
+dispatch_crud_request($crud, 'report_id');

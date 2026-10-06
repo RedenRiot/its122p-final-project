@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Courier+Prime:wght@400;700&display=swap">
     <link rel="stylesheet" href="style.css">
-    <title>Customer Dashboard - Librowse</title>
+    <title>Transactions - Librowse</title>
     <script src="session.js"></script>
 </head>
 <body>
 <header>
     <h1>Librowse Book Exchange</h1>
-    <p>Buy, trade, and exchange books with other users.</p>
     <nav>
         <a href="index.html">Home</a>
         <a href="browse.html">Browse Books</a>
         <a href="list-book.html">List a Book</a>
-        <a href="transactions.html" class="active-nav">Dashboard</a>
+        <a href="customer-dashboard.html">Dashboard</a>
         <a href="support.html">Refund &amp; Report</a>
-        <a href="login.html">Login</a>
-        <a href="register.html">Register</a>
     </nav>
     <div id="auth-status" class="auth-status">
         <a href="login.html">Sign in</a>
@@ -26,60 +26,47 @@
     </div>
 </header>
 <main>
-    <!-- CUSTOMER DASHBOARD -->
-    <section id="customer-dashboard-summary">
-        <h2>Customer Dashboard</h2>
-        <p>Welcome! Here is a summary of your activity on Librowse.</p>
+<!-- TRANSACTIONS -->
+        <section id="transactions">
 
-        <!-- Summary Cards -->
-        <div class="dashboard-summary-grid">
-            <div class="dashboard-card">
-                <h3>My Listings</h3>
-                <p class="dashboard-stat" id="stat-total-listings">—</p>
-                <p class="dashboard-stat-label">Total Listed</p>
-                <p class="dashboard-stat-sub" id="stat-active-listings"></p>
-            </div>
-            <div class="dashboard-card">
-                <h3>Transactions</h3>
-                <p class="dashboard-stat" id="stat-total-transactions">—</p>
-                <p class="dashboard-stat-label">Total Transactions</p>
-                <p class="dashboard-stat-sub" id="stat-pending-transactions"></p>
-            </div>
-            <div class="dashboard-card">
-                <h3>Refund Requests</h3>
-                <p class="dashboard-stat" id="stat-total-refunds">—</p>
-                <p class="dashboard-stat-label">Total Submitted</p>
-                <p class="dashboard-stat-sub" id="stat-pending-refunds"></p>
-            </div>
-            <div class="dashboard-card">
-                <h3>Reports</h3>
-                <p class="dashboard-stat" id="stat-total-reports">—</p>
-                <p class="dashboard-stat-label">Total Submitted</p>
-                <p class="dashboard-stat-sub" id="stat-pending-reports"></p>
-            </div>
-        </div>
-    </section>
-
-    <!-- TRANSACTIONS TABLE -->
-    <section id="transactions">
+            <img class="section-icon" src="assets/icon-transactions.svg" alt="" width="52" height="52">
         <h2>My Transactions</h2>
-        <p>View your book purchases and trades.</p>
-        <table>
-            <thead>
-                <tr>
-                    <th>Transaction ID</th>
-                    <th>Book</th>
-                    <th>Type</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="transaction-list">
-                <tr><td colspan="6">No transactions loaded yet.</td></tr>
-            </tbody>
-        </table>
-    </section>
+
+            <p>
+                Your purchase and trade requests, plus requests other readers made for your books.
+            </p>
+
+
+            <!-- Transaction records (populated by JavaScript) -->
+            <table>
+
+                <thead>
+
+                    <tr>
+                        <th>Transaction ID</th>
+                        <th>Book</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Your part</th>
+                        <th>Action</th>
+                    </tr>
+
+                </thead>
+
+                <tbody id="transaction-list">
+
+                    <tr>
+
+                        <td colspan="7"><span class="inline-spinner" aria-hidden="true"></span> Loading your transactions…</td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </section>
 </main>
 <footer>
     <p>Librowse Book Exchange</p>

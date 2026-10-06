@@ -41,6 +41,18 @@ load_env_file_if_exists(__DIR__ . '/../.env.local');
 load_env_file_if_exists(dirname(__DIR__, 2) . '/.env');
 load_env_file_if_exists(dirname(__DIR__, 2) . '/.env.local');
 
+// Never let PHP warnings/notices print into the JSON response
+ini_set('display_errors', '0');
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+
+/* PHP 8.4+ uses Pdo\\Mysql::ATTR_*, older PHP uses PDO::MYSQL_ATTR_* */
+function mysql_attr(string $name): ?int
+{
+    if (defined("Pdo\\Mysql::ATTR_{$name}")) return constant("Pdo\\Mysql::ATTR_{$name}");
+    if (defined("PDO::MYSQL_ATTR_{$name}"))  return constant("PDO::MYSQL_ATTR_{$name}");
+    return null;
+}
+
 function get_env_or(string $key, string $default): string
 {
     $value = getenv($key);
@@ -75,14 +87,16 @@ if ($dbSsl) {
         '/dev/null',                                 // last resort: initiates TLS, skips CA check
     ];
     $caFound = false;
+    $caAttr = mysql_attr('SSL_CA');
     foreach ($caBundles as $bundle) {
         if (file_exists($bundle)) {
-            $pdoOptions[PDO::MYSQL_ATTR_SSL_CA] = $bundle;
+            if ($caAttr !== null) $pdoOptions[$caAttr] = $bundle;
             $caFound = ($bundle !== '/dev/null');
             break;
         }
     }
-    $pdoOptions[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = $caFound;
+    $verifyAttr = mysql_attr('SSL_VERIFY_SERVER_CERT');
+    if ($verifyAttr !== null) $pdoOptions[$verifyAttr] = $caFound;
 }
 
 $pdo = null;

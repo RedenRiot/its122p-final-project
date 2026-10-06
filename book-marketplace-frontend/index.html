@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Courier+Prime:wght@400;700&display=swap">
     <link rel="stylesheet" href="style.css">
-    <title>Librowse Book Exchange - Home</title>
+    <title>Librowse — secondhand book exchange</title>
     <script src="session.js"></script>
 </head>
 <body>
 <header>
     <h1>Librowse Book Exchange</h1>
-    <p>Buy, trade, and exchange books with other users.</p>
     <nav>
-        <a href="index.html">Home</a>
+        <a href="index.html" class="active-nav" aria-current="page">Home</a>
         <a href="browse.html">Browse Books</a>
         <a href="list-book.html">List a Book</a>
-        <a href="transactions.html">Dashboard</a>
+        <a href="customer-dashboard.html">Dashboard</a>
         <a href="support.html">Refund &amp; Report</a>
-        <a href="login.html">Login</a>
-        <a href="register.html">Register</a>
     </nav>
     <div id="auth-status" class="auth-status">
         <a href="login.html">Sign in</a>
@@ -27,14 +27,35 @@
 </header>
 <main>
     <section id="home">
-        <h2>Welcome to Librowse Book Exchange</h2>
-        <p>Librowse Book Exchange is a web application where users can list, purchase, trade, and exchange books with other users.</p>
-        <p>Browse available books or list one of your own books below.</p>
-        <a href="browse.html">Browse Books</a>
-        <a href="list-book.html">List a Book</a>
-        <a href="login.html" class="home-btn-login">Login</a>
-        <a href="register.html" class="home-btn-register">Register</a>
-        <a href="transactions.html" class="home-btn-dashboard">Dashboard</a>
+        <div class="home-copy">
+            <h2>Pass your books on.</h2>
+            <p>Librowse is a marketplace for secondhand books. List a book you&rsquo;ve finished, buy one someone else is done with, or trade shelf for shelf.</p>
+            <div class="home-actions">
+                <a href="browse.html" class="home-btn-primary">Browse books</a>
+                <a href="list-book.html" class="home-btn-secondary">List a book</a>
+                <a href="customer-dashboard.html" class="home-btn-dashboard">Dashboard</a>
+                <a href="login.html" class="home-btn-login">Log in</a>
+                <a href="register.html" class="home-btn-register">Register</a>
+            </div>
+        </div>
+        <img class="home-art" src="assets/hero-reading-nook.svg" alt="A cozy bookshelf with a lamp, a plant and a cup of coffee" width="560" height="470">
+    </section>
+    <section id="home-steps" aria-label="How Librowse works">
+        <div class="home-step">
+            <img src="assets/icon-listings.svg" alt="" width="56" height="56">
+            <h3>List a book you&rsquo;ve finished</h3>
+            <p>Add the title, condition and a price, or mark it as trade only.</p>
+        </div>
+        <div class="home-step">
+            <img src="assets/icon-search.svg" alt="" width="56" height="56">
+            <h3>Find your next read</h3>
+            <p>Search by title or author and filter by category, condition or listing type.</p>
+        </div>
+        <div class="home-step">
+            <img src="assets/icon-transactions.svg" alt="" width="56" height="56">
+            <h3>Buy or trade</h3>
+            <p>Request a purchase or a swap, then follow it from your dashboard.</p>
+        </div>
     </section>
 </main>
 <footer>

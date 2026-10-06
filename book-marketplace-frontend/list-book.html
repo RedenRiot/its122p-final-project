@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Courier+Prime:wght@400;700&display=swap">
     <link rel="stylesheet" href="style.css">
     <title>List a Book - Librowse</title>
     <script src="session.js"></script>
@@ -10,15 +13,12 @@
 <body>
 <header>
     <h1>Librowse Book Exchange</h1>
-    <p>Buy, trade, and exchange books with other users.</p>
     <nav>
         <a href="index.html">Home</a>
         <a href="browse.html">Browse Books</a>
-        <a href="list-book.html">List a Book</a>
-        <a href="transactions.html">Dashboard</a>
+        <a href="list-book.html" class="active-nav" aria-current="page">List a Book</a>
+        <a href="customer-dashboard.html">Dashboard</a>
         <a href="support.html">Refund &amp; Report</a>
-        <a href="login.html">Login</a>
-        <a href="register.html">Register</a>
     </nav>
     <div id="auth-status" class="auth-status">
         <a href="login.html">Sign in</a>
@@ -27,6 +27,7 @@
 </header>
 <main>
     <section id="list-book">
+        <img class="section-icon" src="assets/icon-listings.svg" alt="" width="52" height="52">
         <h2>List a Book</h2>
         <p>Add one of your books to the marketplace.</p>
         <p class="required-note"><span class="required-star">*</span> Required fields</p>
@@ -83,6 +84,21 @@
             </select>
             <span class="field-error" id="err-book-condition"></span>
 
+            <label for="cover-photo">Cover photo <span class="optional-tag">optional</span></label>
+            <div class="photo-picker" id="photo-picker">
+                <div class="photo-preview" id="photo-dropzone" title="Drop a photo here">
+                    <img id="cover-preview" alt="Preview of how your book will look on the shelf">
+                    <span class="photo-preview-tag" id="cover-preview-tag">Placeholder cover</span>
+                </div>
+                <div class="photo-actions">
+                    <p>Add a photo of your actual copy so readers can see its condition. If you skip this, we&rsquo;ll bind it in a library-style cover with your title on it.</p>
+                    <label class="photo-btn" for="cover-photo">Choose a photo</label>
+                    <input type="file" id="cover-photo" accept="image/*" class="visually-hidden">
+                    <button type="button" id="cover-remove" class="btn-clear small-btn" hidden>Remove photo</button>
+                    <span id="cover-status" class="field-hint" role="status">JPG, PNG or WebP. You can also drag a photo onto the preview.</span>
+                </div>
+            </div>
+
             <div class="form-button-row">
                 <button type="submit" id="list-book-submit">List Book</button>
                 <button type="button" id="list-book-clear" class="btn-clear">Clear</button>
@@ -102,6 +118,8 @@
     <p>ITS122P Final Project</p>
 </footer>
 <script src="script.js"></script>
+<script src="book-covers.js"></script>
+<script src="list-book-photo.js"></script>
 <script>
 /* LIST-BOOK FORM ENHANCEMENTS */
 (function () {
@@ -123,9 +141,16 @@
         var errEl = document.getElementById('err-book-isbn');
         if (!errEl) return true;
         if (val === '') { showError(errEl, 'ISBN is required.'); return false; }
-        if (!/^\d+$/.test(val)) { showError(errEl, 'ISBN must contain numbers only.'); return false; }
-        if (val.length !== 10 && val.length !== 13) {
-            showError(errEl, 'ISBN must be exactly 10 or 13 digits. You entered ' + val.length + '.');
+        // Same rule as the server: spaces/hyphens are fine; ISBN-10 may end in X
+        var clean = val.replace(/[\s-]+/g, '').toUpperCase();
+        if (!/^[0-9X]+$/.test(clean) || clean.slice(0, -1).indexOf('X') !== -1) {
+            showError(errEl, 'ISBN can only contain numbers (and an X at the end of a 10-digit ISBN).'); return false;
+        }
+        if (clean.length === 13 && clean.indexOf('X') !== -1) {
+            showError(errEl, 'A 13-digit ISBN contains numbers only.'); return false;
+        }
+        if (clean.length !== 10 && clean.length !== 13) {
+            showError(errEl, 'ISBN must be 10 or 13 digits. You entered ' + clean.length + '.');
             return false;
         }
         clearError(errEl); return true;
