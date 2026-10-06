@@ -1841,12 +1841,15 @@ button:disabled { opacity: .65; cursor: progress; }
     display: flex;
     justify-content: center;
     align-items: center;
+    min-width: 0;
 }
 
 .hero-art-wrapper {
     position: relative;
     max-width: 520px;
     width: 100%;
+    min-width: 0;
+    overflow: clip;
 }
 
 .hero-art-img {
@@ -1861,7 +1864,8 @@ button:disabled { opacity: .65; cursor: progress; }
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 16px;
+    padding: 8px 12px;
+    max-width: calc(100% - 24px);
     background: var(--surface);
     border: 1px solid var(--rule-strong);
     border-radius: var(--r-md);
@@ -1872,13 +1876,13 @@ button:disabled { opacity: .65; cursor: progress; }
 }
 
 .hero-floating-card.card-top {
-    top: 12%;
-    left: -4%;
+    top: 10%;
+    left: 16px;
 }
 
 .hero-floating-card.card-bottom {
     bottom: 8%;
-    right: -4%;
+    right: 16px;
     animation-delay: 2s;
 }
 
@@ -1892,10 +1896,14 @@ button:disabled { opacity: .65; cursor: progress; }
 }
 
 .hero-floating-card .card-icon {
-    width: 24px;
-    height: 24px;
-    flex: 0 0 24px;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
     display: block;
+}
+
+.hero-floating-card small {
+    white-space: nowrap;
 }
 
 .hero-trust-note {
