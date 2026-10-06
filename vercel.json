@@ -6,12 +6,12 @@
       "includeFiles": "book-marketplace-backend/**"
     }
   },
-  "rewrites": [
-    { "source": "/robots.txt", "destination": "/api/robots.php" },
-    { "source": "/sitemap.xml", "destination": "/api/sitemap.php" },
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/", "destination": "/book-marketplace-frontend/index.html" },
-    { "source": "/((?!api/).*)", "destination": "/book-marketplace-frontend/$1" }
+  "routes": [
+    { "src": "/robots.txt", "dest": "/api/robots.php" },
+    { "src": "/sitemap.xml", "dest": "/api/sitemap.php" },
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/", "dest": "/book-marketplace-frontend/index.html" },
+    { "src": "/(.*)", "dest": "/book-marketplace-frontend/$1" }
   ],
   "headers": [
     {
