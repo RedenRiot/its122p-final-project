@@ -75,6 +75,31 @@ function set_listing_status(PDO $pdo, array $ids, string $to, array $from): int
     return $stmt->rowCount();
 }
 
+function log_transaction_activity(PDO $pdo, array $authUser, array $tx, string $action, string $outcome, ?string $reason = null, array $details = []): void
+{
+    record_activity_log($pdo, [
+        'actor_user_id'   => (int) ($authUser['user_id'] ?? 0),
+        'activity_type'   => 'Transaction',
+        'activity_action' => $action,
+        'outcome'         => $outcome,
+        'reason'          => $reason,
+        'page_path'       => '/transactions.php',
+        'target_type'     => 'Transaction',
+        'target_id'       => (string) ($tx['transaction_id'] ?? ''),
+        'details'         => $details + [
+            'transaction_id'   => (int) ($tx['transaction_id'] ?? 0),
+            'transaction_type' => $tx['transaction_type'] ?? null,
+            'status'           => $tx['status'] ?? null,
+        ],
+    ]);
+}
+
+function transaction_error(PDO $pdo, array $authUser, array $context, string $message, int $status = 422, string $action = 'Validation Failed'): void
+{
+    log_transaction_activity($pdo, $authUser, $context, $action, 'Failed', $message, ['error' => $message]);
+    Response::error($message, $status);
+}
+
 try {
     /* ── GET ─────────────────────────────────────────────────────────── */
     if ($method === 'GET' && $isCustomer) {
@@ -103,30 +128,30 @@ try {
         $body = request_body();
         $type = (string) ($body['transaction_type'] ?? '');
         if (!in_array($type, ['Purchase', 'Trade'], true)) {
-            Response::error('transaction_type must be Purchase or Trade.', 422);
+            transaction_error($pdo, $authUser, ['transaction_id' => 0, 'transaction_type' => $type, 'status' => 'Rejected'], 'transaction_type must be Purchase or Trade.', 422, 'Create Failed');
         }
 
         $requested = load_listing($pdo, (int) ($body['requested_inventory_id'] ?? 0));
-        if (!$requested) Response::error('That book listing no longer exists.', 404);
-        if ((int) $requested['seller_id'] === $me) Response::error('You cannot buy or trade for your own book.', 422);
-        if ($requested['status'] !== 'Available') Response::error('Sorry, this book is no longer available.', 409);
+        if (!$requested) transaction_error($pdo, $authUser, ['transaction_id' => 0, 'transaction_type' => $type, 'status' => 'Rejected'], 'That book listing no longer exists.', 404, 'Create Failed');
+        if ((int) $requested['seller_id'] === $me) transaction_error($pdo, $authUser, ['transaction_id' => 0, 'transaction_type' => $type, 'status' => 'Rejected'], 'You cannot buy or trade for your own book.', 422, 'Create Failed');
+        if ($requested['status'] !== 'Available') transaction_error($pdo, $authUser, ['transaction_id' => 0, 'transaction_type' => $type, 'status' => 'Rejected'], 'Sorry, this book is no longer available.', 409, 'Create Failed');
 
         $offeredId = null;
         $amount = null;
         if ($type === 'Purchase') {
             if (!in_array($requested['listing_type'], ['For_sale', 'Both'], true)) {
-                Response::error('This book is listed for trade only.', 422);
+                transaction_error($pdo, $authUser, ['transaction_id' => 0, 'transaction_type' => $type, 'status' => 'Rejected'], 'This book is listed for trade only.', 422, 'Create Failed');
             }
             $amount = $requested['price'];           // price comes from the listing, not the browser
-            if ($amount === null || (float) $amount <= 0) Response::error('This book has no price set.', 422);
+            if ($amount === null || (float) $amount <= 0) transaction_error($pdo, $authUser, ['transaction_id' => 0, 'transaction_type' => $type, 'status' => 'Rejected'], 'This book has no price set.', 422, 'Create Failed');
         } else {
             if (!in_array($requested['listing_type'], ['For_trade', 'Both'], true)) {
-                Response::error('This book is listed for sale only.', 422);
+                transaction_error($pdo, $authUser, ['transaction_id' => 0, 'transaction_type' => $type, 'status' => 'Rejected'], 'This book is listed for sale only.', 422, 'Create Failed');
             }
             $offered = load_listing($pdo, (int) ($body['offered_inventory_id'] ?? 0));
-            if (!$offered) Response::error('Choose one of your own books to offer.', 422);
-            if ((int) $offered['seller_id'] !== $me) Response::error('You can only offer your own books.', 403);
-            if ($offered['status'] !== 'Available') Response::error('The book you offered is not available.', 409);
+            if (!$offered) transaction_error($pdo, $authUser, ['transaction_id' => 0, 'transaction_type' => $type, 'status' => 'Rejected'], 'Choose one of your own books to offer.', 422, 'Create Failed');
+            if ((int) $offered['seller_id'] !== $me) transaction_error($pdo, $authUser, ['transaction_id' => 0, 'transaction_type' => $type, 'status' => 'Rejected'], 'You can only offer your own books.', 403, 'Create Failed');
+            if ($offered['status'] !== 'Available') transaction_error($pdo, $authUser, ['transaction_id' => 0, 'transaction_type' => $type, 'status' => 'Rejected'], 'The book you offered is not available.', 409, 'Create Failed');
             $offeredId = (int) $offered['inventory_id'];
         }
 
@@ -137,7 +162,7 @@ try {
             $reserved = set_listing_status($pdo, $ids, 'In_transaction', ['Available']);
             if ($reserved !== count($ids)) {
                 $pdo->rollBack();
-                Response::error('Sorry, this book was just requested by someone else.', 409);
+                transaction_error($pdo, $authUser, ['transaction_id' => 0, 'transaction_type' => $type, 'status' => 'Rejected'], 'Sorry, this book was just requested by someone else.', 409, 'Create Failed');
             }
             $created = $crud->create([
                 'buyer_id'               => $me,
@@ -148,6 +173,11 @@ try {
                 'status'                 => 'Pending',
             ]);
             $pdo->commit();
+            log_transaction_activity($pdo, $authUser, $created, $type === 'Trade' ? 'Trade Requested' : 'Purchase Requested', 'Neutral', 'Transaction requested', [
+                'requested_inventory_id' => (int) $requested['inventory_id'],
+                'offered_inventory_id'   => $offeredId,
+                'amount_paid'            => $amount,
+            ]);
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             throw $e;
@@ -166,14 +196,14 @@ try {
 
         if ($isCustomer) {
             if ((int) $tx['buyer_id'] !== $me || $from !== 'Pending' || $to !== 'Cancelled') {
-                Response::error('You can only cancel your own pending requests.', 403);
+                transaction_error($pdo, $authUser, $tx, 'You can only cancel your own pending requests.', 403, 'Status Change Failed');
             }
         } elseif (array_diff(array_keys($body), ['status', 'managed_by_staff_id'])) {
-            Response::error('Only the status of a transaction can be changed.', 422);
+            transaction_error($pdo, $authUser, $tx, 'Only the status of a transaction can be changed.', 422, 'Status Change Failed');
         }
         if ($to === $from) Response::json($tx);
         if (!in_array($to, TX_FLOW[$from] ?? [], true)) {
-            Response::error("A transaction can't go from {$from} to {$to}.", 422);
+            transaction_error($pdo, $authUser, $tx, "A transaction can't go from {$from} to {$to}.", 422, 'Status Change Failed');
         }
 
         $listingIds = array_filter([(int) $tx['requested_inventory_id'], (int) ($tx['offered_inventory_id'] ?? 0)]);
@@ -184,8 +214,19 @@ try {
             $updated = $crud->update($id, $update);
             if ($to === 'Completed') {
                 set_listing_status($pdo, $listingIds, $tx['transaction_type'] === 'Trade' ? 'Traded' : 'Sold', ['In_transaction', 'Available']);
+                log_transaction_activity($pdo, $authUser, $updated ?? $tx, $tx['transaction_type'] === 'Trade' ? 'Trade Completed' : 'Purchase Completed', 'Success', 'Transaction completed successfully.', [
+                    'updated_status' => $to,
+                    'managed_by_staff_id' => $updated['managed_by_staff_id'] ?? ($isCustomer ? null : $me),
+                ]);
             } elseif ($to === 'Cancelled') {
                 set_listing_status($pdo, $listingIds, 'Available', ['In_transaction']);
+                log_transaction_activity($pdo, $authUser, $updated ?? $tx, 'Transaction Cancelled', 'Failed', 'Transaction was cancelled.', [
+                    'updated_status' => $to,
+                ]);
+            } elseif ($to === 'Disputed') {
+                log_transaction_activity($pdo, $authUser, $updated ?? $tx, 'Transaction Disputed', 'Failed', 'Transaction was marked as disputed.', [
+                    'updated_status' => $to,
+                ]);
             }
             $pdo->commit();
         } catch (Throwable $e) {

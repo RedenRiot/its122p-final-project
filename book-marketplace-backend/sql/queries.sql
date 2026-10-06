@@ -240,6 +240,24 @@ CREATE TABLE `SYSTEM_RECORDS` (
   CONSTRAINT `fk_system_records_admin_id` FOREIGN KEY (`admin_id`) REFERENCES `USER`(`user_id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+/*CREATE ACTIVITY_LOGS*/
+CREATE TABLE `ACTIVITY_LOGS` (
+  `activity_id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+  `actor_user_id` INT UNSIGNED DEFAULT NULL,
+  `visitor_key` VARCHAR(128) DEFAULT NULL,
+  `activity_type` VARCHAR(60) NOT NULL,
+  `activity_action` VARCHAR(160) NOT NULL,
+  `outcome` ENUM('Success','Failed','Neutral') NOT NULL DEFAULT 'Neutral',
+  `reason` TEXT DEFAULT NULL,
+  `page_path` VARCHAR(255) DEFAULT NULL,
+  `target_type` VARCHAR(60) DEFAULT NULL,
+  `target_id` VARCHAR(64) DEFAULT NULL,
+  `details` JSON DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`activity_id`),
+  CONSTRAINT `fk_activity_logs_actor_user_id` FOREIGN KEY (`actor_user_id`) REFERENCES `USER`(`user_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 /*INSERT SYSTEM_RECORDS*/
 INSERT INTO `SYSTEM_RECORDS` (`record_id`, `admin_id`, `record_type`, `details`, `created_at`) VALUES
   (1, 1, 'Audit_Log', '{"action":"created_category","category_id":1}', '2024-01-05 09:15:00'),
@@ -252,5 +270,14 @@ INSERT INTO `SYSTEM_RECORDS` (`record_id`, `admin_id`, `record_type`, `details`,
   (8, 2, 'Audit_Log', '{"action":"approved_refund","refund_id":1}', '2024-04-12 09:05:00'),
   (9, 1, 'Financial_Transaction_Record', '{"transaction_id":10,"amount":15.50}', '2024-04-20 17:05:00'),
   (10, 2, 'Audit_Log', '{"action":"rejected_report","report_id":4}', '2024-04-06 12:05:00');
+
+/*INSERT ACTIVITY_LOGS*/
+INSERT INTO `ACTIVITY_LOGS` (`activity_id`,`actor_user_id`,`visitor_key`,`activity_type`,`activity_action`,`outcome`,`reason`,`page_path`,`target_type`,`target_id`,`details`,`created_at`) VALUES
+  (1, 5, NULL, 'Visit', 'Home Page Visit', 'Neutral', NULL, '/index.html', 'Page', 'index', '{"page":"Home","consent":"granted"}', '2024-04-01 09:05:00'),
+  (2, 6, NULL, 'Auth', 'Login', 'Success', NULL, '/login.html', 'Session', NULL, '{"role":"Customer"}', '2024-04-02 10:05:00'),
+  (3, 5, NULL, 'Transaction', 'Trade Completed', 'Success', 'Transaction completed successfully.', '/transactions.php', 'Transaction', '2', '{"transaction_id":2,"status":"Completed"}', '2024-04-12 11:31:00'),
+  (4, 7, NULL, 'Transaction', 'Transaction Cancelled', 'Failed', 'Customer cancelled the pending request.', '/transactions.php', 'Transaction', '9', '{"transaction_id":9,"status":"Cancelled"}', '2024-04-19 12:16:00'),
+  (5, 3, NULL, 'Consent', 'Cookie Consent Accepted', 'Success', NULL, '/index.html', 'Consent', NULL, '{"policy":"privacy-cookie"}', '2024-04-01 08:55:00'),
+  (6, 8, NULL, 'Visit', 'Browse Page Visit', 'Neutral', NULL, '/browse.html', 'Page', 'browse', '{"page":"Browse","consent":"granted"}', '2024-04-08 09:45:00');
 
 

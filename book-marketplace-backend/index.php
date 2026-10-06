@@ -28,6 +28,7 @@ echo json_encode([
         'GET|POST /api/refund_request.php',
         'GET|POST /api/reports.php',
         'GET|POST /api/system_records.php',
+        'GET|POST /api/activity_logs.php',
     ],
     'note' => 'Add ?id=<pk> for GET (single), PUT, DELETE on any endpoint above.',
 ], JSON_PRETTY_PRINT);

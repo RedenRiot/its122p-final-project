@@ -21,6 +21,7 @@ const managementState = {
     transactions: [],
     refunds: [],
     records: [],
+    activityLogs: [],
     activeTab: null,
     editingCategoryId: null,
     editingBookId: null
@@ -219,8 +220,13 @@ async function loadRecords() {
     return managementState.records;
 }
 
+async function loadActivityLogs() {
+    managementState.activityLogs = await mgApi("activity_logs.php?limit=500&offset=0");
+    return managementState.activityLogs;
+}
+
 async function reloadCoreData() {
-    await Promise.all([loadAllUsers(), loadCategories(), loadBooks(), loadListings(), loadReports(), loadTransactions(), loadRefunds()]);
+    await Promise.all([loadAllUsers(), loadCategories(), loadBooks(), loadListings(), loadReports(), loadTransactions(), loadRefunds(), loadActivityLogs()]);
     try { await loadRecords(); } catch (e) { console.warn("Records unavailable:", e.message); }
 }
 
@@ -234,6 +240,7 @@ function renderDashboardStats() {
     const pendingRefunds = managementState.refunds.filter(r => r.status === "Pending");
     const openTransactions = managementState.transactions.filter(t => ["Pending","Accepted","Disputed"].includes(t.status));
     const activeListings = managementState.listings.filter(l => l.status === "Available");
+    const visitLogs = managementState.activityLogs.filter(log => mgRole(log.activity_type) === "visit").length;
 
     const cards = managementState.role === "admin" ? [
         ["Users", managementState.users.length],
@@ -243,7 +250,8 @@ function renderDashboardStats() {
         ["Pending Reports", pendingReports.length],
         ["Pending Refunds", pendingRefunds.length],
         ["Staff", staff.length],
-        ["Categories", managementState.categories.length]
+        ["Categories", managementState.categories.length],
+        ["Visit Logs", visitLogs]
     ] : [
         ["Customers", customers.length],
         ["Pending Forms", managementState.reports.filter(r => ["Verification_Form","Seller_Application"].includes(r.report_category) && ["Pending","Under_Review"].includes(r.status)).length],
@@ -858,6 +866,30 @@ function renderRecordsTable() {
     `).join("") || `<tr><td colspan="6" class="management-empty">No system records found.</td></tr>`;
 }
 
+function renderActivityLogsTable() {
+    const tbody = document.getElementById("activity-logs-body");
+    if (!tbody) return;
+    const um = userMap();
+
+    tbody.innerHTML = managementState.activityLogs.map(log => {
+        const details = typeof log.details === "string" ? log.details : JSON.stringify(log.details || {});
+        const target = [log.target_type, log.target_id].filter(Boolean).join(" #") || (log.page_path || "—");
+        return `
+            <tr>
+                <td>${log.activity_id}</td>
+                <td>${mgEscape(um[log.actor_user_id]?.username || (log.visitor_key ? `Visitor ${log.visitor_key}` : "—"))}</td>
+                <td>${mgEscape(log.activity_type)}</td>
+                <td>${mgEscape(log.activity_action)}</td>
+                <td>${badge(log.outcome)}</td>
+                <td>${mgEscape(log.reason || "—")}</td>
+                <td>${mgEscape(target)}</td>
+                <td class="management-code">${mgEscape(details)}</td>
+                <td>${formatDate(log.created_at)}</td>
+            </tr>
+        `;
+    }).join("") || `<tr><td colspan="9" class="management-empty">No activity logs found.</td></tr>`;
+}
+
 async function submitRecordForm(event) {
     event.preventDefault();
     try {
@@ -925,6 +957,7 @@ function refreshRenderedData() {
     renderTransactionsTable();
     renderRefundsTable();
     renderRecordsTable();
+    renderActivityLogsTable();
 }
 
 /* ── Loading placeholders while data arrives ───────────────────────────── */
@@ -934,7 +967,8 @@ function showLoadingPlaceholders() {
         tbody.innerHTML = `<tr class="management-loading-row"><td colspan="${cols}"><span class="mg-spinner" aria-hidden="true"></span> Loading…</td></tr>`;
     });
     const stats = document.getElementById("overview-stats");
-    if (stats) stats.innerHTML = Array.from({ length: 4 }, () =>
+    const statCount = managementState.role === "admin" ? 9 : 4;
+    if (stats) stats.innerHTML = Array.from({ length: statCount }, () =>
         `<div class="management-card mg-skeleton"><div class="management-stat-label">Loading…</div><div class="management-stat-value">&nbsp;</div></div>`).join("");
 }
 

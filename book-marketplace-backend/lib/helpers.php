@@ -54,3 +54,71 @@ function text_length(string $value): int
 {
     return function_exists('mb_strlen') ? mb_strlen($value) : strlen($value);
 }
+
+/** Ensure the shared activity-log table exists, then write a new row. */
+function ensure_activity_logs_table(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `ACTIVITY_LOGS` (
+            `activity_id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+            `actor_user_id` INT UNSIGNED DEFAULT NULL,
+            `visitor_key` VARCHAR(128) DEFAULT NULL,
+            `activity_type` VARCHAR(60) NOT NULL,
+            `activity_action` VARCHAR(160) NOT NULL,
+            `outcome` ENUM('Success','Failed','Neutral') NOT NULL DEFAULT 'Neutral',
+            `reason` TEXT DEFAULT NULL,
+            `page_path` VARCHAR(255) DEFAULT NULL,
+            `target_type` VARCHAR(60) DEFAULT NULL,
+            `target_id` VARCHAR(64) DEFAULT NULL,
+            `details` JSON DEFAULT NULL,
+            `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`activity_id`),
+            INDEX `idx_activity_actor` (`actor_user_id`),
+            INDEX `idx_activity_type` (`activity_type`),
+            INDEX `idx_activity_created` (`created_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (PDOException $e) {
+        error_log('[librowse] ' . $e->getMessage());
+    }
+}
+
+function record_activity_log(PDO $pdo, array $data): void
+{
+    try {
+        ensure_activity_logs_table($pdo);
+
+        $details = $data['details'] ?? null;
+        if (is_array($details) || is_object($details)) {
+            $details = json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } elseif ($details !== null && $details !== '') {
+            $details = json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } else {
+            $details = null;
+        }
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO `ACTIVITY_LOGS`
+                (`actor_user_id`, `visitor_key`, `activity_type`, `activity_action`, `outcome`, `reason`, `page_path`, `target_type`, `target_id`, `details`)
+             VALUES
+                (:actor_user_id, :visitor_key, :activity_type, :activity_action, :outcome, :reason, :page_path, :target_type, :target_id, :details)'
+        );
+        $stmt->execute([
+            'actor_user_id'   => isset($data['actor_user_id']) && $data['actor_user_id'] !== '' ? (int) $data['actor_user_id'] : null,
+            'visitor_key'     => $data['visitor_key'] ?? null,
+            'activity_type'   => (string) ($data['activity_type'] ?? 'Activity'),
+            'activity_action' => (string) ($data['activity_action'] ?? 'Unknown'),
+            'outcome'         => in_array(($data['outcome'] ?? 'Neutral'), ['Success', 'Failed', 'Neutral'], true) ? $data['outcome'] : 'Neutral',
+            'reason'          => $data['reason'] ?? null,
+            'page_path'       => $data['page_path'] ?? null,
+            'target_type'     => $data['target_type'] ?? null,
+            'target_id'       => isset($data['target_id']) ? (string) $data['target_id'] : null,
+            'details'         => $details,
+        ]);
+    } catch (PDOException $e) {
+        error_log('[librowse] ' . $e->getMessage());
+    }
+}

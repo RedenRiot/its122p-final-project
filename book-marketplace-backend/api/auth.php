@@ -147,6 +147,17 @@ try {
         $pdo->prepare('UPDATE `LOGIN_ATTEMPTS` SET cleared_at = UTC_TIMESTAMP() WHERE user_id = :uid AND cleared_at IS NULL')->execute(['uid' => (int) $user['user_id']]);
 
         $token = issue_auth_token($user);
+        record_activity_log($pdo, [
+            'actor_user_id'   => (int) $user['user_id'],
+            'activity_type'   => 'Auth',
+            'activity_action' => 'Login',
+            'outcome'         => 'Success',
+            'page_path'       => '/login.html',
+            'details'         => [
+                'role' => $user['role'],
+                'status' => $user['status'],
+            ],
+        ]);
         Response::json([
             'authenticated' => true,
             'token' => $token,
@@ -191,6 +202,16 @@ try {
         $stmt->execute(['id' => (int) $pdo->lastInsertId()]);
         $user = $stmt->fetch();
         $token = issue_auth_token($user);
+        record_activity_log($pdo, [
+            'actor_user_id'   => (int) $user['user_id'],
+            'activity_type'   => 'Account',
+            'activity_action' => 'Register',
+            'outcome'         => 'Success',
+            'page_path'       => '/register.html',
+            'details'         => [
+                'role' => $user['role'],
+            ],
+        ]);
 
         Response::json([
             'authenticated' => true,
@@ -206,7 +227,20 @@ try {
     }
 
     if ($action === 'logout' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $user = current_authenticated_user($pdo);
         revoke_auth_token(bearer_token_from_request());
+        if ($user) {
+            record_activity_log($pdo, [
+                'actor_user_id'   => (int) $user['user_id'],
+                'activity_type'   => 'Auth',
+                'activity_action' => 'Logout',
+                'outcome'         => 'Success',
+                'page_path'       => '/logout',
+                'details'         => [
+                    'role' => $user['role'],
+                ],
+            ]);
+        }
         Response::json(['authenticated' => false, 'message' => 'Session revoked.']);
     }
 

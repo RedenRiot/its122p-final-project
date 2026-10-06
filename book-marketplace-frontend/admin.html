@@ -9,6 +9,7 @@
     <title>Librowse Admin Dashboard</title>
     <link rel="stylesheet" href="management.css">
 <script src="session.js"></script>
+<script src="consent.js"></script>
 </head>
 <body class="management-body" data-management-role="admin">
 <div class="management-shell">
@@ -29,6 +30,7 @@
             <button data-tab="transactions">Transactions</button>
             <button data-tab="refunds">Refunds</button>
             <button data-tab="records">System Records</button>
+            <button data-tab="activity-logs">Activity Logs</button>
         </nav>
 
         <div class="management-sidebar-bottom">
@@ -237,6 +239,19 @@
                     <table class="management-table">
                         <thead><tr><th>ID</th><th>Admin</th><th>Type</th><th>Details</th><th>Created</th><th>Actions</th></tr></thead>
                         <tbody id="records-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="management-section" data-section="activity-logs">
+            <div class="management-panel">
+                <h3>Activity and Visit Logs</h3>
+                <p class="helper">View page visits, login/logout events, and trade outcomes. Successful and failed actions are recorded with their reasons when available.</p>
+                <div class="management-table-wrap">
+                    <table class="management-table">
+                        <thead><tr><th>ID</th><th>Actor</th><th>Type</th><th>Action</th><th>Outcome</th><th>Reason</th><th>Target</th><th>Details</th><th>Created</th></tr></thead>
+                        <tbody id="activity-logs-body"></tbody>
                     </table>
                 </div>
             </div>
