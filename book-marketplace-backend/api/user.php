@@ -16,7 +16,6 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
-$authUser = require_authenticated_user($pdo);
 
 $crud = new Crud(
     pdo: $pdo,
@@ -32,10 +31,10 @@ $crud = new Crud(
     hidden: ['password_hash'],
 );
 
-/* Customers only get public fields for other people */
-function public_fields(array $row, array $authUser): array
+/* Customers and unauthenticated visitors only get public fields for other people */
+function public_fields(array $row, ?array $authUser): array
 {
-    if ((int) $row['user_id'] === (int) $authUser['user_id']) return $row;
+    if ($authUser && (int) $row['user_id'] === (int) $authUser['user_id']) return $row;
     return [
         'user_id'  => $row['user_id'],
         'username' => $row['username'],
@@ -45,7 +44,8 @@ function public_fields(array $row, array $authUser): array
 
 try {
     if ($method === 'GET') {
-        if (!is_staff_or_admin($authUser)) {
+        $authUser = current_authenticated_user($pdo);
+        if (!$authUser || !is_staff_or_admin($authUser)) {
             if (isset($_GET['id'])) {
                 $row = $crud->show($_GET['id']);
                 if (!$row) Response::error('User not found.', 404);
@@ -73,7 +73,7 @@ try {
     }
 
     if ($method === 'PUT' || $method === 'PATCH') {
-        require_authenticated_user($pdo, ['Staff', 'Admin']);
+        $authUser = require_authenticated_user($pdo, ['Staff', 'Admin']);
         $id = (int) ($_GET['id'] ?? 0);
         $target = $crud->show($id);
         if (!$target) Response::error('User not found.', 404);
@@ -106,7 +106,7 @@ try {
     }
 
     if ($method === 'DELETE') {
-        require_authenticated_user($pdo, ['Admin']);
+        $authUser = require_authenticated_user($pdo, ['Admin']);
         if ((int) ($_GET['id'] ?? 0) === (int) $authUser['user_id']) {
             Response::error('You cannot archive your own account.', 403);
         }

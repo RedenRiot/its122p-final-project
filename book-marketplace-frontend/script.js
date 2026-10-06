@@ -144,20 +144,21 @@ function updateAuthStatusUI() {
 }
 
 
-function requireAuthenticatedCustomer(message = "Please login or register first.") {
+function requireAuthenticatedCustomer(message = "Please sign in or create an account to continue.") {
     if (!currentUser) {
-        alert(message);
-        window.location.href =
-            "login.html";
+        const proceed = confirm(
+            `${message}\n\nWould you like to sign in or create an account now?`
+        );
+        if (proceed) {
+            window.location.href = "login.html";
+        }
         return false;
     }
 
     if (currentUser.role !== "Customer") {
         alert(
-            "This page currently supports Customer accounts only."
+            "This action currently supports Customer accounts only."
         );
-        window.location.href =
-            "login.html";
         return false;
     }
 
@@ -258,8 +259,11 @@ async function apiRequest(endpoint, options = {}) {
         if (response.status === 401) {
             if (window.librowseAuth) window.librowseAuth.clearSession();
             else { sessionStorage.removeItem(SESSION_TOKEN_KEY); sessionStorage.removeItem(SESSION_USER_KEY); }
-            window.location.replace("login.html");
-            throw new Error("Your session has expired. Please sign in again.");
+            const isPublicPage = document.documentElement.hasAttribute("data-public-page");
+            if (!isPublicPage) {
+                window.location.replace("login.html");
+            }
+            throw new Error("Your session has expired or authentication is required.");
         }
 
         /* response.ok = success */
@@ -1750,7 +1754,9 @@ async function submitReport(event) {
 /* EVENT LISTENERS */
 document.addEventListener("DOMContentLoaded", async function () {
     if (window.librowseAuthReady) {
-        if (!await window.librowseAuthReady) return;
+        const authUser = await window.librowseAuthReady;
+        const isPublicPage = document.documentElement.hasAttribute("data-public-page");
+        if (!isPublicPage && !authUser) return;
     }
 
     loadCurrentUser();

@@ -231,6 +231,11 @@
         t.addEventListener("click", () => setMineGroup(t.dataset.group)));
 
     mineEl?.addEventListener("change", () => {
+        if (mineEl.checked && !me()) {
+            mineEl.checked = false;
+            requireAuthenticatedCustomer("Please sign in or register to view your listings.");
+            return;
+        }
         if (!mineEl.checked && selectMode) setSelectMode(false, false);
         if (mineEl.checked) setMineGroup("active", false);
         syncMineTabs();
@@ -335,11 +340,23 @@
 
         dialog.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
         dialog.querySelector("#dialog-buy")?.addEventListener("click", async () => {
+            if (!me()) {
+                dialog.close();
+                requireAuthenticatedCustomer("Please sign in or register to buy this book.");
+                return;
+            }
             dialog.close();
             await buyBook(listing);
             await refreshShelf();
         });
-        dialog.querySelector("#dialog-trade")?.addEventListener("click", () => showTradePicker(listing));
+        dialog.querySelector("#dialog-trade")?.addEventListener("click", () => {
+            if (!me()) {
+                dialog.close();
+                requireAuthenticatedCustomer("Please sign in or register to trade for this book.");
+                return;
+            }
+            showTradePicker(listing);
+        });
         if (mine) wireOwnerPhoto(listing, book);
         if (mine) wireRemove(listing, book);
 
@@ -607,7 +624,13 @@
         return { changed, skipped: (result && result.skipped_ids) || [] };
     }
 
-    manageBtn?.addEventListener("click", () => setSelectMode(!selectMode));
+    manageBtn?.addEventListener("click", () => {
+        if (!me()) {
+            requireAuthenticatedCustomer("Please sign in or register to manage your listings.");
+            return;
+        }
+        setSelectMode(!selectMode);
+    });
     els("bulk-done")?.addEventListener("click", () => setSelectMode(false));
     els("bulk-none")?.addEventListener("click", () => { selected.clear(); filterBooks(); updateBar(); });
     els("bulk-all")?.addEventListener("click", () => {

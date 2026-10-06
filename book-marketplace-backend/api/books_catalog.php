@@ -22,7 +22,11 @@ $crud = new Crud(
 
 
 $method = $_SERVER['REQUEST_METHOD'];
-$authenticatedUser = require_authenticated_user($pdo);
+if ($method === 'GET') {
+    $authenticatedUser = current_authenticated_user($pdo);
+} else {
+    $authenticatedUser = require_authenticated_user($pdo);
+}
 
 /**
  * Normalizes whatever the client sent for categories into a clean,

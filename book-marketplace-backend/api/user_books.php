@@ -127,7 +127,7 @@ if ($method === 'GET' && ($_GET['action'] ?? '') === 'cover') {
 
 /* Book lists: every column except the photo itself, plus has_cover / cover_v */
 if ($method === 'GET') {
-    require_authenticated_user($pdo);
+    current_authenticated_user($pdo);
     $where = ['ub.deleted_at IS NULL'];
     $params = [];
     foreach (['seller_id', 'book_id', 'status'] as $col) {
