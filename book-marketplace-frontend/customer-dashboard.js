@@ -4,7 +4,6 @@
 (async function () {
     if (window.librowseAuthReady) {
         const user = await window.librowseAuthReady;
-        if (!user) return;
     }
 
     const API = window.LIBROWSE_API_BASE
@@ -32,7 +31,18 @@
 
     let me = null;
     try { me = JSON.parse(sessionStorage.getItem("librowseCurrentUser") || "null"); } catch (_) {}
-    if (!me || !me.user_id) return;
+    if (!me || !me.user_id) {
+        const title = document.getElementById("dashboard-title");
+        const subtitle = document.getElementById("dashboard-subtitle");
+        if (title) title.textContent = "Browse the marketplace";
+        if (subtitle) subtitle.textContent = "Sign in to view your personal dashboard, listings, and activity summary.";
+        statIds.forEach(id => setStat(id, "Sign in"));
+        const table = document.getElementById("dashboard-listing-table");
+        const tbody = document.getElementById("dashboard-listing-body");
+        if (table) table.style.display = "none";
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6">Sign in to see your listings and activity.</td></tr>';
+        return;
+    }
     document.getElementById("dashboard-title").textContent = `Welcome back, ${me.username}!`;
     document.getElementById("dashboard-subtitle").textContent = "Here is a summary of your activity on Librowse.";
 

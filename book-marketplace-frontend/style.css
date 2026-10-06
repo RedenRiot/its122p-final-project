@@ -1892,7 +1892,21 @@ button:disabled { opacity: .65; cursor: progress; }
 }
 
 .hero-floating-card .card-icon {
-    font-size: 20px;
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    display: block;
+}
+
+.hero-trust-note {
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: var(--r-md);
+    border: 1px solid var(--rule);
+    background: rgba(255, 252, 247, 0.9);
+    color: var(--ink-2);
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 .hero-floating-card strong {

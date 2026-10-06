@@ -144,15 +144,9 @@ function updateAuthStatusUI() {
 }
 
 
-function requireAuthenticatedCustomer() {
-    if (document.documentElement.hasAttribute("data-public-page")) {
-        return true;
-    }
-
+function requireAuthenticatedCustomer(message = "Please login or register first.") {
     if (!currentUser) {
-        alert(
-            "Please login or register first."
-        );
+        alert(message);
         window.location.href =
             "login.html";
         return false;
@@ -928,7 +922,7 @@ async function submitBookListing(event) {
 
     /* Must be logged in - seller ID comes from the session, never from a text field */
 
-    if (!requireAuthenticatedCustomer()) {
+    if (!requireAuthenticatedCustomer("Please sign in to list a book.")) {
         return;
     }
 
@@ -1209,7 +1203,7 @@ function showNewListingResult(listing, book) {
 
 async function buyBook(listing) {
 
-    if (!requireAuthenticatedCustomer()) {
+    if (!requireAuthenticatedCustomer("Please sign in to buy this book.")) {
         return;
     }
 
@@ -1304,7 +1298,7 @@ async function buyBook(listing) {
 
 async function tradeBook(listing) {
 
-    if (!requireAuthenticatedCustomer()) {
+    if (!requireAuthenticatedCustomer("Please sign in to trade for this book.")) {
         return;
     }
 
@@ -1430,6 +1424,10 @@ const TX_STATUS_TEXT = {
 async function loadTransactions() {
     const list = document.getElementById("transaction-list");
     if (!list) return;
+    if (!currentUser || !sessionStorage.getItem(SESSION_TOKEN_KEY)) {
+        list.innerHTML = `<tr><td colspan="7">Sign in to view your transaction history.</td></tr>`;
+        return;
+    }
     list.innerHTML = loadingRow(7, "Loading your transactions…");
     try {
         const all = await apiRequest("transactions.php");
@@ -1509,6 +1507,12 @@ async function loadRefundOptions() {
     const select = document.getElementById("refund-transaction-id");
     if (!select || select.tagName !== "SELECT") return;
     const help = document.getElementById("refund-tx-help");
+    if (!currentUser || !sessionStorage.getItem(SESSION_TOKEN_KEY)) {
+        select.disabled = true;
+        select.innerHTML = `<option value="">Sign in to request a refund</option>`;
+        if (help) help.textContent = "Refunds are available after you sign in and complete a purchase.";
+        return;
+    }
     select.disabled = true;
     select.innerHTML = `<option value="">Loading your completed purchases…</option>`;
     try {
@@ -1544,6 +1548,11 @@ async function submitRefund(event) {
     event.preventDefault();
 
 
+    if (!requireAuthenticatedCustomer("Please sign in to request a refund.")) {
+        return;
+    }
+
+
     const transactionId =
         document
             .getElementById(
@@ -1552,14 +1561,7 @@ async function submitRefund(event) {
             .value;
 
 
-    const customerId =
-        currentUser
-            ? currentUser.user_id
-            : document
-                .getElementById(
-                    "customer-id"
-                )
-                .value;
+    const customerId = currentUser.user_id;
 
 
     const reason =
@@ -1642,14 +1644,12 @@ async function submitReport(event) {
     event.preventDefault();
 
 
-    const submittedBy =
-        currentUser
-            ? currentUser.user_id
-            : document
-                .getElementById(
-                    "submitted-by"
-                )
-                .value;
+    if (!requireAuthenticatedCustomer("Please sign in to submit a report.")) {
+        return;
+    }
+
+
+    const submittedBy = currentUser.user_id;
 
 
     const category =
@@ -1754,7 +1754,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     loadCurrentUser();
-    if (!requireAuthenticatedCustomer()) return;
 
     updateAuthStatusUI();
     applyCurrentUserToForms();
