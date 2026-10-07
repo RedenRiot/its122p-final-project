@@ -1,0 +1,118 @@
+/* =========================================================================
+   VARIABLES & ROOT STYLES
+   Color palette, typography, spacing, and border radius tokens
+   ========================================================================= */
+
+:root {
+    /* Primary Colors */
+    --ink: #4e3b30;
+    --ink-2: #6b5040;
+    --paper: #f4eadd;
+    --surface: #fffaf3;
+    --rule: #eadbc8;
+    --rule-strong: #d9c3a8;
+    --text: #4e3b30;
+    --muted: #8a715f;
+    
+    /* Accent Colors */
+    --spine: #9a7458;
+    --spine-dark: #7c5b44;
+    --spine-tint: #f3e6d6;
+    
+    /* Status Colors */
+    --tab: #e2b66c;
+    --stamp: #b4655a;
+    --stamp-tint: #f8e6e1;
+    --ok: #6e8b5e;
+    --ok-tint: #e8efe1;
+    --warn: #a97a2c;
+    --warn-tint: #f8edd6;
+    --info: #6c7f95;
+    --info-tint: #e7ecf1;
+
+    /* Typography */
+    --font-head: "Fraunces", Georgia, serif;
+    --font-ui: "Nunito Sans", "Segoe UI", system-ui, sans-serif;
+    --font-type: "Courier Prime", "Courier New", ui-monospace, monospace;
+
+    /* Spacing */
+    --r-lg: 20px;
+    --r-md: 12px;
+    --r-pill: 999px;
+
+    /* Legacy variable names used by inline styles in the markup */
+    --text-gray: var(--muted);
+    
+    /* Wood/Shelf colors */
+    --wood-back: #4a372b;
+    --wood-board: #9b7352;
+    --wood-edge: #7a573c;
+    
+    /* Card styling */
+    --card-line: #dfe6ea;
+    --card-red: #c9786b;
+}
+
+/* =========================================================================
+   RESET & BASE STYLES
+   ========================================================================= */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+::selection {
+    background: var(--tab);
+    color: var(--ink);
+}
+
+a {
+    color: var(--spine);
+}
+
+a:hover {
+    color: var(--spine-dark);
+}
+
+:focus-visible {
+    outline: 3px solid var(--tab);
+    outline-offset: 2px;
+}
+
+/* =========================================================================
+   UTILITY CLASSES
+   ========================================================================= */
+
+.visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+[hidden] {
+    display: none !important;
+}

@@ -1,0 +1,144 @@
+/* =========================================================================
+   DASHBOARD STYLES
+   Cards, welcome section, and layout
+   ========================================================================= */
+
+#dashboard-welcome {
+    background: transparent;
+    border: none;
+    padding: 4px 0 0;
+}
+
+#dashboard-welcome h2 {
+    font-size: 34px;
+}
+
+#dashboard-welcome p {
+    margin-bottom: 0;
+}
+
+.dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.dashboard-card {
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--ink);
+    border-radius: var(--r-md);
+}
+
+.dashboard-card-green {
+    border-left-color: var(--ok);
+}
+
+.dashboard-card-blue {
+    border-left-color: var(--info);
+}
+
+.dashboard-card-yellow {
+    border-left-color: var(--tab);
+}
+
+.dashboard-card-red {
+    border-left-color: var(--stamp);
+}
+
+.dashboard-card-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.dashboard-card-value {
+    margin-top: 4px;
+    font-family: var(--font-head);
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+#dashboard-listing-table {
+    margin-top: 18px;
+}
+
+.dashboard-note {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+/* =========================================================================
+   COZY THEME - DASHBOARD
+   ========================================================================= */
+
+#dashboard-welcome {
+    position: relative;
+    display: block;
+    padding: 32px 240px 32px 36px;
+    min-height: 170px;
+    background: linear-gradient(135deg, #ead8c1 0%, #e2cbb0 100%);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+}
+
+#dashboard-welcome h2 {
+    font-size: 34px;
+}
+
+#dashboard-welcome p {
+    color: var(--ink-2);
+}
+
+.welcome-art {
+    position: absolute;
+    right: 28px;
+    bottom: -6px;
+    width: 200px;
+    height: auto;
+}
+
+.dashboard-card {
+    border-radius: var(--r-md);
+    background: #fffdf9;
+}
+
+.dashboard-card-value {
+    font-weight: 600;
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (max-width: 960px) {
+    #home {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 36px 28px 24px;
+    }
+}
+
+@media (max-width: 720px) {
+    #dashboard-welcome {
+        padding: 26px 22px 150px;
+    }
+
+    .welcome-art {
+        width: 150px;
+        right: 50%;
+        transform: translateX(50%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+    }
+}

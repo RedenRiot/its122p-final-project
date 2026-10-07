@@ -1,0 +1,33 @@
+/* =========================================================================
+   LIBROWSE — Customer & Auth Stylesheet
+   This file imports all modular CSS files for better maintainability
+   
+   Ink header, paper background, bookcloth-green actions, library-tab yellow
+   for "you are here". Literata for headings, Public Sans for interface.
+   All selectors target existing markup/JS classes — do not rename them.
+   ========================================================================= */
+
+/* Base */
+@import url("variables.css");
+
+/* Layout & Structure */
+@import url("layout.css");
+@import url("header.css");
+@import url("footer.css");
+
+/* Components */
+@import url("forms.css");
+@import url("buttons.css");
+@import url("tables.css");
+
+/* Pages */
+@import url("home.css");
+@import url("auth.css");
+@import url("dashboard.css");
+@import url("bookshelf.css");
+
+/* Landing Page */
+@import url("landing-page.css");
+
+/* Utilities & Helpers */
+@import url("utilities.css");

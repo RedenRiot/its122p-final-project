@@ -1,0 +1,246 @@
+/* =========================================================================
+   HEADER STYLES
+   Sticky header with navigation and auth status
+   ========================================================================= */
+
+header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 8px 28px;
+    padding: 0 32px;
+    min-height: 64px;
+    background: var(--ink);
+    color: #fff;
+    border-bottom: 3px solid var(--spine);
+}
+
+header h1 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+
+/* COZY THEME */
+header {
+    background: rgba(233, 214, 190, .92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--ink);
+    border-bottom: 1px solid var(--rule-strong);
+}
+
+header h1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+header h1::before {
+    content: "";
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    background: url("../assets/logo.svg") center / contain no-repeat;
+}
+
+/* =========================================================================
+   NAVIGATION
+   ========================================================================= */
+
+nav {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    align-self: stretch;
+}
+
+nav::-webkit-scrollbar {
+    display: none;
+}
+
+nav a {
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    color: #c9d3dd;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -3px;
+    transition: color .15s, border-color .15s;
+}
+
+nav a:hover {
+    color: #fff;
+}
+
+nav a.active-nav {
+    color: #fff;
+    font-weight: 600;
+    border-bottom-color: var(--tab);
+}
+
+/* COZY THEME */
+nav a {
+    color: var(--ink-2);
+    font-weight: 600;
+}
+
+nav a:hover {
+    color: var(--ink);
+}
+
+nav a.active-nav {
+    color: var(--ink);
+    border-bottom-color: var(--spine);
+}
+
+/* =========================================================================
+   AUTH STATUS
+   ========================================================================= */
+
+.auth-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: #c9d3dd;
+    white-space: nowrap;
+}
+
+.auth-status strong {
+    color: #fff;
+    font-weight: 600;
+}
+
+.auth-status a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.auth-status a:last-child {
+    padding: 7px 14px;
+    border: 1px solid rgba(255, 255, 255, .35);
+    border-radius: var(--r-md);
+}
+
+.auth-status a:last-child:hover {
+    background: rgba(255, 255, 255, .08);
+}
+
+.auth-status button {
+    padding: 7px 14px;
+    font-size: 13px;
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, .35);
+}
+
+.auth-status button:hover {
+    background: rgba(255, 255, 255, .08);
+}
+
+/* COZY THEME */
+.auth-status {
+    color: var(--ink-2);
+}
+
+.auth-status strong {
+    color: var(--ink);
+}
+
+.auth-status a {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.auth-status a:last-child {
+    background: var(--spine);
+    color: #fffaf3;
+    border-color: var(--spine);
+    border-radius: 999px;
+}
+
+.auth-status a:last-child:hover {
+    background: var(--spine-dark);
+}
+
+.auth-status button {
+    color: var(--ink);
+    border-color: var(--rule-strong);
+    background: var(--surface);
+    border-radius: 999px;
+}
+
+.auth-status button:hover {
+    background: #fff;
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (max-width: 960px) {
+    header {
+        grid-template-columns: 1fr auto;
+        padding: 10px 20px 0;
+    }
+
+    header h1 {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .auth-status {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    nav {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 720px) {
+    .auth-status span {
+        display: none;
+    }
+
+    header h1 {
+        font-size: 18px;
+        white-space: normal;
+    }
+
+    .auth-status {
+        gap: 8px;
+        font-size: 13px;
+    }
+
+    .auth-status a:last-child,
+    .auth-status button {
+        padding: 6px 10px;
+    }
+}
+
+@media (max-width: 720px) {
+    header h1::before {
+        width: 28px;
+        height: 28px;
+    }
+}
