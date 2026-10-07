@@ -22,6 +22,8 @@ class Crud
     private array $required;
     /** @var string[] columns to strip from output responses */
     private array $hidden;
+    /** @var string[] columns that support partial matching (LIKE) */
+    private array $searchable;
 
     public function __construct(
         PDO $pdo,
@@ -31,7 +33,8 @@ class Crud
         array $required = [],
         array $enums = [],
         ?array $updatable = null,
-        array $hidden = []
+        array $hidden = [],
+        array $searchable = []
     ) {
         $this->pdo = $pdo;
         $this->table = $table;
@@ -41,6 +44,7 @@ class Crud
         $this->enums = $enums;
         $this->required = $required;
         $this->hidden = $hidden;
+        $this->searchable = $searchable;
     }
 
     private function sanitizeRow(?array $row): ?array
@@ -66,10 +70,19 @@ class Crud
         $where = [];
         $bindings = [];
 
+        // 1. Exact matches for insertable columns
         foreach ($this->insertable as $col) {
             if (isset($queryParams[$col]) && $queryParams[$col] !== '') {
                 $where[] = "`{$col}` = :{$col}";
                 $bindings[$col] = $queryParams[$col];
+            }
+        }
+
+        // 2. Partial matches for searchable columns
+        foreach ($this->searchable as $col) {
+            if (isset($queryParams[$col]) && $queryParams[$col] !== '') {
+                $where[] = "`{$col}` LIKE :{$col}_like";
+                $bindings["{$col}_like"] = '%' . $queryParams[$col] . '%';
             }
         }
 
