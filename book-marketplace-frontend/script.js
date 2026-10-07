@@ -27,7 +27,77 @@ function escapeHTML(value) {
 }
 
 
-/* GLOBAL DATA */
+/* FEEDBACK SYSTEM */
+
+async function submitFeedback(transactionId, rating, comment) {
+    try {
+        await apiRequest("feedback.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                transaction_id: transactionId,
+                rating: rating,
+                comment: comment
+            })
+        });
+        alert("Thank you for your feedback!");
+        return true;
+    } catch (error) {
+        alert("Unable to submit feedback: " + error.message);
+        return false;
+    }
+}
+
+function showFeedbackModal(transactionId) {
+    let modal = document.getElementById("feedback-modal");
+    if (!modal) {
+        // Inject modal HTML if it doesn't exist
+        modal = document.createElement("div");
+        modal.id = "feedback-modal";
+        modal.className = "modal";
+        modal.style.display = "none";
+        modal.innerHTML = `
+            <div class="modal-content">
+                <span class="close-modal" id="close-feedback">&times;</span>
+                <h2>Share Your Experience</h2>
+                <p>We'd love to hear your thoughts on this transaction!</p>
+                <form id="feedback-form">
+                    <div class="form-group">
+                        <label for="feedback-rating">Rating</label>
+                        <select id="feedback-rating" required>
+                            <option value="5">⭐⭐⭐⭐⭐ (Excellent)</option>
+                            <option value="4">⭐⭐⭐⭐ (Good)</option>
+                            <option value="3">⭐⭐⭐ (Average)</option>
+                            <option value="2">⭐⭐ (Poor)</option>
+                            <option value="1">⭐ (Terrible)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="feedback-comment">Comments</label>
+                        <textarea id="feedback-comment" rows="4" placeholder="Tell us more..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary">Submit Feedback</button>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById("close-feedback").onclick = () => modal.style.display = "none";
+        window.onclick = (event) => { if (event.target == modal) modal.style.display = "none"; };
+        
+        const form = document.getElementById("feedback-form");
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const rating = document.getElementById("feedback-rating").value;
+            const comment = document.getElementById("feedback-comment").value;
+            const success = await submitFeedback(transactionId, rating, comment);
+            if (success) modal.style.display = "none";
+        };
+    }
+    
+    modal.style.display = "block";
+}
+
 
 /* Temporary storage for API data */
 
@@ -1285,6 +1355,14 @@ async function buyBook(listing) {
         if (document.getElementById("book-list")) { await loadBooks(); filterBooks(); }
         await loadTransactions();
 
+        const createdTx = await apiRequest("transactions.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(transactionData)
+        });
+        showFeedbackModal(createdTx.transaction_id);
+
+
 
     } catch (error) {
 
@@ -1384,6 +1462,13 @@ async function tradeBook(listing) {
 
         if (document.getElementById("book-list")) { await loadBooks(); filterBooks(); }
         await loadTransactions();
+
+        const createdTx = await apiRequest("transactions.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(transactionData)
+        });
+        showFeedbackModal(createdTx.transaction_id);
 
 
     } catch (error) {
