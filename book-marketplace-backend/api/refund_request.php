@@ -1,19 +1,21 @@
 <?php
 /**
  * /api/refund_request.php
- * GET (list/show), POST (create), PUT (update), DELETE
+ *
+ *   GET     Customers: their own refund requests. Staff/Admin: all.
+ *   POST    Customers only, for one of their own COMPLETED purchases that
+ *           doesn't already have an open or approved refund. The server sets
+ *           customer_id and status itself.
+ *   PUT     Staff/Admin: decide a Pending request (Approved or Rejected).
+ *           The reviewer is recorded automatically. Decisions are final.
+ *   DELETE  Admin only (soft delete).
  */
 require_once __DIR__ . '/../lib/bootstrap.php';
 
-$user = require_authenticated_user($pdo);
-$isStaffOrAdmin = in_array($user['role'], ['Staff', 'Admin'], true);
 $method = $_SERVER['REQUEST_METHOD'];
-$id = $_GET['id'] ?? null;
-
-if ($method === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
+$authUser = require_authenticated_user($pdo);
+$isCustomer = !is_staff_or_admin($authUser);
+$me = (int) $authUser['user_id'];
 
 $crud = new Crud(
     pdo: $pdo,
@@ -21,84 +23,66 @@ $crud = new Crud(
     primaryKey: 'refund_id',
     insertable: ['transaction_id', 'customer_id', 'processed_by_staff_id', 'reason', 'status'],
     required: ['transaction_id', 'customer_id', 'reason'],
-    enums: [
-        'status' => ['Pending', 'Approved', 'Rejected'],
-    ],
+    enums: ['status' => ['Pending', 'Approved', 'Rejected']],
+    softDeleteColumn: 'deleted_at',
 );
 
 try {
-    switch ($method) {
-        case 'GET':
-            if ($id !== null) {
-                $row = $crud->show($id);
-                if (!$row || (!$isStaffOrAdmin && (int)$row['customer_id'] !== (int)$user['user_id'])) {
-                    Response::error('Refund request not found or access denied.', 404);
-                }
-                Response::json($row);
-            } else {
-                if (!$isStaffOrAdmin) {
-                    $_GET['customer_id'] = (string) $user['user_id'];
-                }
-                Response::json($crud->index($_GET));
-            }
-            break;
+    if ($method === 'GET' && $isCustomer) {
+        if (isset($_GET['id'])) {
+            $row = $crud->show($_GET['id']);
+            if (!$row || (int) $row['customer_id'] !== $me) Response::error('Refund request not found.', 404);
+            Response::json($row);
+        }
+        Response::json($crud->index(['customer_id' => $me, 'limit' => 1000]));
+    }
 
-        case 'POST':
-            $body = read_json_body();
-            if (!$isStaffOrAdmin) {
-                $body['customer_id'] = (int) $user['user_id'];
-                $body['status'] = 'Pending';
-                unset($body['processed_by_staff_id']);
+    if ($method === 'POST') {
+        if (!$isCustomer) Response::error('Refunds are requested by customers.', 403);
+        $body = request_body();
+        $txId = (int) ($body['transaction_id'] ?? 0);
+        $reason = trim((string) ($body['reason'] ?? ''));
+        if (text_length($reason) < 10) Response::error('Please describe the problem in at least 10 characters.', 422);
+        if (text_length($reason) > 1000) Response::error('Please keep the reason under 1000 characters.', 422);
 
-                $txStmt = $pdo->prepare('SELECT buyer_id FROM `TRANSACTIONS` WHERE transaction_id = :tid LIMIT 1');
-                $txStmt->execute(['tid' => (int) ($body['transaction_id'] ?? 0)]);
-                $tx = $txStmt->fetch();
-                if (!$tx || (int)$tx['buyer_id'] !== (int)$user['user_id']) {
-                    Response::error('You can only request a refund for your own transactions.', 403);
-                }
-            }
-            $created = $crud->create($body);
-            Response::json($created, 201);
-            break;
+        $stmt = $pdo->prepare('SELECT * FROM `TRANSACTIONS` WHERE transaction_id = :id AND deleted_at IS NULL LIMIT 1');
+        $stmt->execute(['id' => $txId]);
+        $tx = $stmt->fetch();
+        if (!$tx || (int) $tx['buyer_id'] !== $me) Response::error('That transaction was not found in your purchases.', 404);
+        if ($tx['transaction_type'] !== 'Purchase') Response::error('Refunds are only available for purchases, not trades.', 422);
+        if ($tx['status'] !== 'Completed') Response::error('You can request a refund once the purchase is completed.', 422);
 
-        case 'PUT':
-        case 'PATCH':
-            if (!$isStaffOrAdmin) {
-                Response::error('Only Staff or Administrators can process refund requests.', 403);
-            }
-            if ($id === null) {
-                Response::error("Query parameter 'refund_id' (as ?id=) is required for updates.", 400);
-            }
-            $body = read_json_body();
-            $body['processed_by_staff_id'] = (int) $user['user_id'];
-            $updated = $crud->update($id, $body);
-            if ($updated === null) {
-                Response::error('Refund request not found.', 404);
-            }
-            Response::json($updated);
-            break;
+        $dup = $pdo->prepare("SELECT COUNT(*) FROM `REFUND_REQUEST` WHERE transaction_id = :id AND status IN ('Pending','Approved') AND deleted_at IS NULL");
+        $dup->execute(['id' => $txId]);
+        if ((int) $dup->fetchColumn() > 0) Response::error('A refund for this purchase is already open or approved.', 409);
 
-        case 'DELETE':
-            if (!$isStaffOrAdmin) {
-                Response::error('Only Staff or Administrators can delete refund requests.', 403);
-            }
-            if ($id === null) {
-                Response::error("Query parameter 'refund_id' (as ?id=) is required for deletes.", 400);
-            }
-            $ok = $crud->delete($id);
-            if (!$ok) {
-                Response::error('Refund request not found.', 404);
-            }
-            Response::json(['message' => 'Deleted', 'refund_id' => $id]);
-            break;
+        Response::json($crud->create([
+            'transaction_id' => $txId,
+            'customer_id'    => $me,
+            'reason'         => $reason,
+            'status'         => 'Pending',
+        ]), 201);
+    }
 
-        default:
-            Response::error('Method not allowed.', 405);
+    if ($method === 'PUT' || $method === 'PATCH') {
+        require_authenticated_user($pdo, ['Staff', 'Admin']);
+        $id = (int) ($_GET['id'] ?? 0);
+        $row = $crud->show($id);
+        if (!$row) Response::error('Refund request not found.', 404);
+        $to = (string) (request_body()['status'] ?? '');
+        if ($to === $row['status']) Response::json($row);
+        if ($row['status'] !== 'Pending') Response::error('This refund has already been decided.', 422);
+        if (!in_array($to, ['Approved', 'Rejected'], true)) Response::error('Choose Approved or Rejected.', 422);
+        Response::json($crud->update($id, ['status' => $to, 'processed_by_staff_id' => $me]));
+    }
+
+    if ($method === 'DELETE') {
+        require_authenticated_user($pdo, ['Admin']);
     }
 } catch (InvalidArgumentException $e) {
     Response::error($e->getMessage(), 422);
 } catch (PDOException $e) {
-    $isDebug = filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN);
-    $details = $isDebug ? ['details' => $e->getMessage()] : [];
-    Response::error('Database error.', 500, $details);
+    database_error_response($e);
 }
+
+dispatch_crud_request($crud, 'refund_id');

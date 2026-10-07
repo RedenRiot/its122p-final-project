@@ -1,0 +1,220 @@
+/* =========================================================================
+   BUTTON STYLES
+   ========================================================================= */
+
+button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 20px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--spine);
+    border: 1px solid transparent;
+    border-radius: var(--r-md);
+    cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+}
+
+button:hover {
+    background: var(--spine-dark);
+}
+
+button:disabled,
+button[disabled] {
+    background: #cdb9a3;
+    cursor: not-allowed;
+}
+
+.form-button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 26px;
+}
+
+button.btn-clear {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--rule-strong);
+}
+
+button.btn-clear:hover {
+    background: var(--paper);
+    border-color: var(--ink);
+}
+
+/* Buttons inside table rows (Buy / Trade / Cancel) */
+td button {
+    padding: 6px 12px;
+    font-size: 13px;
+    margin: 2px 4px 2px 0;
+}
+
+.transaction-action button {
+    background: transparent;
+    color: var(--stamp);
+    border-color: currentColor;
+}
+
+.transaction-action button:hover {
+    background: var(--stamp-tint);
+}
+
+/* =========================================================================
+   COZY THEME BUTTON STYLES
+   ========================================================================= */
+
+button {
+    border-radius: 999px;
+    padding: 11px 22px;
+}
+
+td button {
+    border-radius: 999px;
+}
+
+/* =========================================================================
+   SMALL BUTTON VARIANT
+   ========================================================================= */
+
+.small-btn {
+    padding: 7px 14px;
+    font-size: 13px;
+}
+
+button.inline-retry,
+button.btn-small {
+    margin: 0 0 0 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+}
+
+button.btn-small {
+    margin-left: 0;
+}
+
+button:disabled {
+    opacity: .65;
+    cursor: progress;
+}
+
+/* =========================================================================
+   DANGER BUTTONS
+   ========================================================================= */
+
+button.btn-danger {
+    color: var(--stamp);
+    background: transparent;
+    border-color: #e5bdb6;
+}
+
+button.btn-danger:hover {
+    background: var(--stamp-tint);
+    border-color: var(--stamp);
+}
+
+button.btn-danger-solid {
+    background: var(--stamp);
+}
+
+button.btn-danger-solid:hover {
+    background: #9a4f45;
+}
+
+/* =========================================================================
+   TEXT LINK BUTTON
+   ========================================================================= */
+
+button.text-link {
+    display: inline;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    font-weight: 700;
+    color: var(--spine-dark);
+    background: none;
+    border: none;
+    border-radius: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+button.text-link:hover {
+    background: none;
+    color: var(--ink);
+}
+
+/* =========================================================================
+   LOCK REQUEST BUTTON
+   ========================================================================= */
+
+.lock-request-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+    background: var(--stamp);
+}
+
+.lock-request-btn:hover {
+    background: #9a4f45;
+}
+
+/* =========================================================================
+   LOCK RETRY LINK
+   ========================================================================= */
+
+.lock-retry-link {
+    display: inline;
+    margin-top: 10px;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--stamp);
+    background: none;
+    border: none;
+    border-radius: 0;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.lock-retry-link:hover {
+    background: none;
+    color: var(--ink);
+}
+
+/* =========================================================================
+   MANAGE / TAB BUTTONS
+   ========================================================================= */
+
+.manage-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--surface);
+    border-color: var(--rule-strong);
+}
+
+.manage-btn:hover {
+    background: var(--paper);
+    border-color: var(--spine);
+}
+
+.manage-btn.active {
+    color: #fffaf3;
+    background: var(--ink);
+    border-color: var(--ink);
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+    }
+}

@@ -20,7 +20,9 @@ class Crud
     private array $enums;
     /** @var string[] columns that must be present (and non-null) on create */
     private array $required;
-    /** @var string[] columns to strip from output responses */
+    /** @var string column stamped on delete — rows are never removed from the database */
+    private string $softDeleteColumn;
+    /** @var string[] columns never sent back to clients (e.g. password_hash) */
     private array $hidden;
     /** @var string[] columns that support partial matching (LIKE) */
     private array $searchable;
@@ -33,6 +35,7 @@ class Crud
         array $required = [],
         array $enums = [],
         ?array $updatable = null,
+        string $softDeleteColumn = 'deleted_at',
         array $hidden = [],
         array $searchable = []
     ) {
@@ -43,21 +46,12 @@ class Crud
         $this->updatable = $updatable ?? $insertable;
         $this->enums = $enums;
         $this->required = $required;
+        $this->softDeleteColumn = $softDeleteColumn;
         $this->hidden = $hidden;
         $this->searchable = $searchable;
-    }
 
-    private function sanitizeRow(?array $row): ?array
-    {
-        if (!$row) {
-            return null;
-        }
-        if ($this->hidden) {
-            foreach ($this->hidden as $col) {
-                unset($row[$col]);
-            }
-        }
-        return $row;
+        // Make sure the soft-delete column exists (older databases lack it)
+        ensure_column($pdo, $table, $softDeleteColumn);
     }
 
     /**
@@ -86,41 +80,44 @@ class Crud
             }
         }
 
+        /* Exclude soft-deleted rows */
+        $where[] = "`{$this->softDeleteColumn}` IS NULL";
+
         $sql = "SELECT * FROM `{$this->table}`";
         if ($where) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
         $sql .= " ORDER BY `{$this->primaryKey}` ASC";
 
-        $limit = isset($queryParams['limit']) ? max(1, (int) $queryParams['limit']) : 50;
+        // Default 500 rows (lists were silently cut off at 50 before); hard cap 1000
+        $limit = isset($queryParams['limit']) ? min(1000, max(1, (int) $queryParams['limit'])) : 500;
         $offset = isset($queryParams['offset']) ? max(0, (int) $queryParams['offset']) : 0;
         $sql .= " LIMIT {$limit} OFFSET {$offset}";
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($bindings);
 
-        $rows = $stmt->fetchAll();
-        if ($this->hidden) {
-            foreach ($rows as &$r) {
-                foreach ($this->hidden as $col) {
-                    unset($r[$col]);
-                }
-            }
-        }
-
-        return $rows;
+        return array_map([$this, 'strip'], $stmt->fetchAll());
     }
 
-    /** GET /api/<resource>?id=5 */
+    /** Removes hidden columns before a row is returned to a client. */
+    public function strip(array $row): array
+    {
+        foreach ($this->hidden as $col) unset($row[$col]);
+        return $row;
+    }
+
+    /** GET /api/<resource>?id=5 — returns null for soft-deleted rows */
     public function show($id): ?array
     {
+        $sdCond = " AND `{$this->softDeleteColumn}` IS NULL";
         $stmt = $this->pdo->prepare(
-            "SELECT * FROM `{$this->table}` WHERE `{$this->primaryKey}` = :id LIMIT 1"
+            "SELECT * FROM `{$this->table}` WHERE `{$this->primaryKey}` = :id{$sdCond} LIMIT 1"
         );
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
 
-        return $this->sanitizeRow($row ?: null);
+        return $row ? $this->strip($row) : null;
     }
 
     /**
@@ -188,17 +185,34 @@ class Crud
         return $this->show($id);
     }
 
-    /** DELETE /api/<resource>?id=5 */
+    /** DELETE /api/<resource>?id=5
+     *  If a softDeleteColumn is set, sets that column to NOW() instead of
+     *  removing the row. The row is hidden from index() and show() but stays
+     *  in the database for audit purposes. */
     public function delete($id): bool
     {
-        if (!$this->show($id)) {
+        $row = $this->showIncludingDeleted($id);
+        if (!$row) {
             return false;
         }
+        // Soft delete only: stamp the date, keep the row for logging
+        $col = $this->softDeleteColumn;
         $stmt = $this->pdo->prepare(
-            "DELETE FROM `{$this->table}` WHERE `{$this->primaryKey}` = :id"
+            "UPDATE `{$this->table}` SET `{$col}` = NOW() WHERE `{$this->primaryKey}` = :id AND `{$col}` IS NULL"
         );
         $stmt->execute(['id' => $id]);
-        return true;
+        return $stmt->rowCount() > 0;
+    }
+
+    /** Like show() but also returns soft-deleted rows (used internally). */
+    public function showIncludingDeleted($id): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM `{$this->table}` WHERE `{$this->primaryKey}` = :id LIMIT 1"
+        );
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+        return $row ?: null;
     }
 
     /**

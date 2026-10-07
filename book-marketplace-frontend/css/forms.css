@@ -1,0 +1,286 @@
+/* =========================================================================
+   FORM STYLES
+   Input fields, labels, validation, and form layout
+   ========================================================================= */
+
+form {
+    margin: 0;
+}
+
+label {
+    display: block;
+    margin: 18px 0 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    font: inherit;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r-md);
+    padding: 11px 13px;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #b39c88;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+    border-color: #c4a98a;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--spine);
+    box-shadow: 0 0 0 3px rgba(154, 116, 88, .22);
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 38px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a715f' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.5;
+}
+
+input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    accent-color: var(--spine);
+}
+
+#list-book,
+#refund,
+#report {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.required-star {
+    color: var(--stamp);
+    font-weight: 700;
+    margin-left: 2px;
+}
+
+.required-note {
+    font-size: 13px;
+    color: var(--muted);
+    margin: -8px 0 4px;
+}
+
+.field-hint,
+.input-helper-text {
+    display: block;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.field-error {
+    display: none;
+    margin-top: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--stamp);
+}
+
+.field-invalid,
+input.field-invalid,
+select.field-invalid,
+textarea.field-invalid {
+    border-color: var(--stamp) !important;
+    background: var(--stamp-tint);
+}
+
+/* =========================================================================
+   PRICE INPUT WITH CURRENCY PREFIX
+   ========================================================================= */
+
+.price-currency-label {
+    display: none;
+}
+
+.price-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.price-prefix {
+    position: absolute;
+    left: 14px;
+    color: var(--ink);
+    font-weight: 700;
+    pointer-events: none;
+}
+
+.price-input-wrapper input {
+    padding-left: 32px;
+}
+
+/* =========================================================================
+   CATEGORY CHECKBOXES AS CHIPS
+   ========================================================================= */
+
+fieldset.checkbox-group {
+    margin: 18px 0 0;
+    padding: 14px 16px 16px;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r-md);
+}
+
+fieldset.checkbox-group legend {
+    padding: 0 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+#book-category-options,
+#filter-category-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.checkbox-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 7px 14px 7px 11px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r-pill);
+    background: var(--surface);
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+
+.checkbox-option:hover {
+    border-color: var(--spine);
+}
+
+.checkbox-option:has(input:checked) {
+    background: var(--spine-tint);
+    border-color: var(--spine);
+    color: var(--spine-dark);
+}
+
+.checkbox-group-empty {
+    margin: 0;
+    font-size: 14px;
+    color: var(--muted);
+}
+
+/* =========================================================================
+   BROWSE FILTERS
+   ========================================================================= */
+
+#search-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-rows: auto auto;
+    grid-auto-flow: column;
+    column-gap: 14px;
+    margin-bottom: 24px;
+    padding: 20px 22px 22px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+}
+
+#search-form label {
+    margin-top: 0;
+}
+
+#search-form fieldset.checkbox-group {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    background: var(--surface);
+}
+
+#search-form button[type="submit"] {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    justify-self: start;
+    margin-top: 16px;
+}
+
+/* LIBRARY UI - Card-catalog search (lined index card) */
+#search-form {
+    background-color: #fffdf7;
+    background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--card-line) 31px 32px);
+    background-position: 0 12px;
+    border: 1px solid #e3d5c2;
+    border-top: 3px solid var(--card-red);
+    border-radius: 6px;
+    box-shadow: 0 1px 0 #fff inset, 0 6px 16px -10px rgba(78, 59, 48, .35);
+}
+
+#search-form>label {
+    font-family: var(--font-type);
+    font-size: 13px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+}
+
+/* =========================================================================
+   OPTIONAL TAG
+   ========================================================================= */
+
+.optional-tag {
+    margin-left: 6px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    background: var(--paper);
+    border-radius: 999px;
+    vertical-align: 1px;
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (max-width: 720px) {
+    #search-form {
+        grid-template-columns: 1fr;
+        grid-auto-flow: row;
+        grid-template-rows: none;
+    }
+
+    #search-form label {
+        margin-top: 12px;
+    }
+
+    #search-form fieldset.checkbox-group,
+    #search-form button[type="submit"] {
+        grid-row: auto;
+    }
+}

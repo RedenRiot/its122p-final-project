@@ -6,7 +6,7 @@
 require_once __DIR__ . '/../lib/bootstrap.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    require_authenticated_user($pdo);
+    current_authenticated_user($pdo);
 } else {
     require_authenticated_user($pdo, ['Admin']);
 }

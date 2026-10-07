@@ -3,11 +3,8 @@
 function librowseApiBase() {
     if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname || '127.0.0.1';
-    const isLocal = (host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:') && window.location.port !== '8000';
-    if (isLocal) {
-        return 'http://127.0.0.1:8000/api';
-    }
-    if (window.location.port === '8000') {
+    const port = window.location.port;
+    if (port === '8000') {
         const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
         return `${protocol}//${host}:8000/api`;
     }
@@ -411,11 +408,7 @@ async function handleLogin(event) {
 
         forgetLockedAccount(identifier);
         saveCurrentUser(data.user, data.token);
-        const destination = data.user.role === "Admin"
-            ? "admin.html"
-            : data.user.role === "Staff"
-            ? "staff.html"
-            : "transactions.html";
+        const destination = data.user.role === "Admin" ? "admin.html" : data.user.role === "Staff" ? "staff.html" : "customer-dashboard.html";
         showMessage(`Welcome back, ${data.user.username}! Redirecting...`, "success");
         setTimeout(() => window.location.replace(destination), 250);
     } catch (error) {
@@ -465,7 +458,7 @@ async function handleRegister(event) {
         if (!response.ok) throw new Error(data.error || "Registration failed.");
         saveCurrentUser(data.user, data.token);
         showMessage("Account created successfully! Redirecting...", "success");
-        setTimeout(() => window.location.replace("transactions.html"), 250);
+        setTimeout(() => window.location.replace("customer-dashboard.html"), 250);
     } catch (error) {
         showMessage(`Registration failed: ${error.message}`, "error");
     } finally {
@@ -498,7 +491,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const link = document.getElementById("session-continue-link");
             if (link) {
                 const role = String(data.user.role || '').toLowerCase();
-                link.href = role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'transactions.html';
+                link.href = role === 'admin' ? 'admin.html' : role === 'staff' ? 'staff.html' : 'customer-dashboard.html';
                 link.textContent = role === 'admin' || role === 'staff' ? 'Open Management Dashboard' : 'Go to Marketplace';
             }
         } catch (_) { await clearCurrentUser(); }
@@ -520,7 +513,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (input) input.type = input.type === "password" ? "text" : "password";
     }));
 
-    // Demo convenience buttons to autofill presentation test accounts
+    // Demo convenience buttons still fill the login form, but authentication is now always server-side.
     document.querySelectorAll(".demo-pill").forEach(button => button.addEventListener("click", () => {
         const username = document.getElementById("login-identifier");
         const password = document.getElementById("login-password");
@@ -528,3 +521,79 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (password) password.value = button.dataset.pass || "password";
     }));
 });
+
+/* ==========================================================================
+   PASSWORD STRENGTH METER (register page)
+   ========================================================================== */
+(function () {
+    const pw = document.getElementById("register-password");
+    if (!pw) return;
+
+    const fill = document.getElementById("pw-strength-fill");
+    const label = document.getElementById("pw-strength-label");
+    const reqEls = {
+        length: document.getElementById("req-length"),
+        upper:  document.getElementById("req-upper"),
+        lower:  document.getElementById("req-lower"),
+        digit:  document.getElementById("req-digit"),
+        symbol: document.getElementById("req-symbol"),
+    };
+
+    function score(v) {
+        const rules = {
+            length: v.length >= 8,
+            upper:  /[A-Z]/.test(v),
+            lower:  /[a-z]/.test(v),
+            digit:  /[0-9]/.test(v),
+            symbol: /[^A-Za-z0-9]/.test(v),
+        };
+        let passed = 0;
+        for (const [key, ok] of Object.entries(rules)) {
+            const el = reqEls[key];
+            if (!el) continue;
+            el.classList.toggle("req-met", ok);
+            el.textContent = (ok ? "✓ " : "○ ") + el.textContent.replace(/^[✓○] /, "");
+            if (ok) passed++;
+        }
+        return passed;
+    }
+
+    const LEVELS = [
+        { label: "Very weak", color: "#ef4444", pct: "20%" },
+        { label: "Weak",      color: "#f97316", pct: "40%" },
+        { label: "Fair",      color: "#eab308", pct: "60%" },
+        { label: "Almost there — 1 rule left", color: "#84cc16", pct: "80%" },
+        { label: "Strong", color: "#16a34a", pct: "100%" },
+    ];
+
+    pw.addEventListener("input", () => {
+        const v = pw.value;
+        if (!fill) return;
+        if (!v) {
+            fill.style.width = "0"; fill.style.background = "";
+            if (label) { label.textContent = "Password strength: —"; label.style.color = ""; }
+            score("");
+            checkMatch();
+            return;
+        }
+        const passed = score(v);
+        const lvl = LEVELS[Math.max(0, passed - 1)];
+        fill.style.width = lvl.pct;
+        fill.style.background = lvl.color;
+        fill.setAttribute("aria-label", lvl.label);
+        if (label) { label.textContent = "Password strength: " + lvl.label; label.style.color = lvl.color; }
+        checkMatch();
+    });
+
+    /* "Passwords match" / "don't match" under Confirm Password */
+    const confirm = document.getElementById("register-confirm-password");
+    const matchEl = document.getElementById("password-match-indicator");
+    function checkMatch() {
+        if (!confirm || !matchEl) return;
+        if (!confirm.value) { matchEl.textContent = ""; matchEl.className = "password-match-hint"; return; }
+        const ok = confirm.value === pw.value;
+        matchEl.textContent = ok ? "✓ Passwords match" : "✗ Passwords don't match yet";
+        matchEl.className = "password-match-hint " + (ok ? "match" : "no-match");
+    }
+    confirm?.addEventListener("input", checkMatch);
+})();

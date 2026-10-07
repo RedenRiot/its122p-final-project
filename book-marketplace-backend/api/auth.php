@@ -51,6 +51,8 @@ function ensure_locked_status(PDO $pdo): void
     }
 }
 
+ensure_column($pdo, 'USER', 'deleted_at');
+
 $action = strtolower((string) ($_GET['action'] ?? ''));
 
 try {
@@ -62,23 +64,13 @@ try {
             Response::error('Username/email and password are required.', 422);
         }
 
-        /* ── Auto-create LOGIN_ATTEMPTS table if not yet present ─────────── */
-        $pdo->exec(
-            'CREATE TABLE IF NOT EXISTS `LOGIN_ATTEMPTS` (
-                `attempt_id`   INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                `user_id`      INT UNSIGNED NOT NULL,
-                `attempted_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                INDEX `idx_la_user` (`user_id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
-        );
-
         // MySQL native prepared statements do not reliably allow the same
         // named placeholder to appear more than once in a statement.
         // Use two parameters for the username/email comparison.
         $stmt = $pdo->prepare(
             'SELECT user_id, username, email, password_hash, role, status, permission
              FROM `USER`
-             WHERE username = :username_identifier OR LOWER(email) = LOWER(:email_identifier)
+             WHERE deleted_at IS NULL AND (username = :username_identifier OR LOWER(email) = LOWER(:email_identifier))
              LIMIT 1'
         );
         $stmt->execute([
@@ -86,8 +78,32 @@ try {
             'email_identifier' => $identifier,
         ]);
         $user = $stmt->fetch();
+        /* ── RATE LIMITING ────────────────────────────────────────────────
+           3 wrong passwords are allowed. The 4th wrong password locks the
+           account by setting USER.status = 'Locked' in the database, so the
+           lock survives refreshes, new browsers and new devices. Only an
+           Admin can unlock it (Admin → Users → Unlock).
+           ──────────────────────────────────────────────────────────────── */
+        $maxAttempts = 3;
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS `LOGIN_ATTEMPTS` (
+                `attempt_id`   INT UNSIGNED AUTO_INCREMENT NOT NULL,
+                `user_id`      INT UNSIGNED NOT NULL,
+                `attempted_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`attempt_id`),
+                INDEX `idx_la_user` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+        );
+        ensure_column($pdo, 'LOGIN_ATTEMPTS', 'cleared_at');
+        $lockedResponse = function (string $username) use ($maxAttempts): void {
+            Response::json([
+                'error'        => 'Your account is locked because of too many incorrect password attempts. Please contact an administrator to unlock it.',
+                'locked'       => true,
+                'username'     => $username,
+                'max_attempts' => $maxAttempts,
+            ], 423);
+        };
 
-        /* Unknown user — generic error (do not reveal whether account exists) */
         if (!$user) Response::error('Invalid username/email or password.', 401);
 
         /* Already locked — stays locked (even with the right password) until an Admin unlocks it */
@@ -104,7 +120,9 @@ try {
         $valid = $hash !== '' && password_verify($password, $hash);
 
         // Compatibility migration for the original seed placeholders.
-        if (!$valid && str_starts_with($hash, '$2b$') && $password === 'password') {
+        // Only for the broken placeholder hashes in the original seed data
+        // (they are too short to be real bcrypt hashes). Real hashes never match here.
+        if (!$valid && str_starts_with($hash, '$2b$') && strlen($hash) < 60 && $password === 'password') {
             $hash = password_hash($password, PASSWORD_DEFAULT);
             $up = $pdo->prepare('UPDATE `USER` SET password_hash = :hash WHERE user_id = :id');
             $up->execute(['hash' => $hash, 'id' => $user['user_id']]);
@@ -125,7 +143,7 @@ try {
             $uid = (int) $user['user_id'];
             $pdo->prepare('INSERT INTO `LOGIN_ATTEMPTS` (user_id, attempted_at) VALUES (:uid, UTC_TIMESTAMP())')
                 ->execute(['uid' => $uid]);
-            $countStmt = $pdo->prepare('SELECT COUNT(*) FROM `LOGIN_ATTEMPTS` WHERE user_id = :uid');
+            $countStmt = $pdo->prepare('SELECT COUNT(*) FROM `LOGIN_ATTEMPTS` WHERE user_id = :uid AND cleared_at IS NULL');
             $countStmt->execute(['uid' => $uid]);
             $failed = (int) $countStmt->fetchColumn();
 
@@ -134,9 +152,8 @@ try {
                 $pdo->prepare("UPDATE `USER` SET status = 'Locked' WHERE user_id = :uid")
                     ->execute(['uid' => $uid]);
                 // Start from zero once an Admin unlocks the account
-                $pdo->prepare('DELETE FROM `LOGIN_ATTEMPTS` WHERE user_id = :uid')->execute(['uid' => $uid]);
+                $pdo->prepare('UPDATE `LOGIN_ATTEMPTS` SET cleared_at = UTC_TIMESTAMP() WHERE user_id = :uid AND cleared_at IS NULL')->execute(['uid' => $uid]);
                 locked_response((string) $user['username']);
-            }
             }
 
             $finalWarning = ($failed === LIBROWSE_MAX_FAILED_LOGINS);
@@ -151,16 +168,28 @@ try {
             ], 401);
         }
 
-        /* ── Success: clear attempt log and issue token ────────────────────── */
-        $pdo->prepare('DELETE FROM `LOGIN_ATTEMPTS` WHERE user_id = :uid')
-            ->execute(['uid' => (int) $user['user_id']]);
+        if ($user['status'] !== 'Active') Response::error('This account is not active and cannot sign in.', 403);
+
+        // Successful sign-in clears the failed-attempt counter.
+        $pdo->prepare('UPDATE `LOGIN_ATTEMPTS` SET cleared_at = UTC_TIMESTAMP() WHERE user_id = :uid AND cleared_at IS NULL')->execute(['uid' => (int) $user['user_id']]);
 
         $token = issue_auth_token($user);
+        record_activity_log($pdo, [
+            'actor_user_id'   => (int) $user['user_id'],
+            'activity_type'   => 'Auth',
+            'activity_action' => 'Login',
+            'outcome'         => 'Success',
+            'page_path'       => '/login.html',
+            'details'         => [
+                'role' => $user['role'],
+                'status' => $user['status'],
+            ],
+        ]);
         Response::json([
             'authenticated' => true,
-            'token'         => $token,
-            'expires_in'    => LIBROWSE_SESSION_TTL,
-            'user'          => public_user($user),
+            'token' => $token,
+            'expires_in' => LIBROWSE_SESSION_TTL,
+            'user' => public_user($user),
         ]);
     }
 
@@ -173,6 +202,7 @@ try {
         if (!preg_match('/^[a-zA-Z0-9_]{3,50}$/', $username)) Response::error('Username must be 3-50 characters and contain only letters, numbers, and underscores.', 422);
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) Response::error('Please provide a valid email address.', 422);
         if (strlen($password) < 8) Response::error('Password must be at least 8 characters long.', 422);
+
 
         $check = $pdo->prepare('SELECT user_id FROM `USER` WHERE username = :username OR LOWER(email) = LOWER(:email) LIMIT 1');
         $check->execute(['username' => $username, 'email' => $email]);
@@ -189,6 +219,16 @@ try {
         $stmt->execute(['id' => (int) $pdo->lastInsertId()]);
         $user = $stmt->fetch();
         $token = issue_auth_token($user);
+        record_activity_log($pdo, [
+            'actor_user_id'   => (int) $user['user_id'],
+            'activity_type'   => 'Account',
+            'activity_action' => 'Register',
+            'outcome'         => 'Success',
+            'page_path'       => '/register.html',
+            'details'         => [
+                'role' => $user['role'],
+            ],
+        ]);
 
         Response::json([
             'authenticated' => true,
@@ -204,15 +244,28 @@ try {
     }
 
     if ($action === 'logout' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $user = current_authenticated_user($pdo);
         revoke_auth_token(bearer_token_from_request());
+        if ($user) {
+            record_activity_log($pdo, [
+                'actor_user_id'   => (int) $user['user_id'],
+                'activity_type'   => 'Auth',
+                'activity_action' => 'Logout',
+                'outcome'         => 'Success',
+                'page_path'       => '/logout',
+                'details'         => [
+                    'role' => $user['role'],
+                ],
+            ]);
+        }
         Response::json(['authenticated' => false, 'message' => 'Session revoked.']);
     }
 
     Response::error('Unknown authentication action.', 404);
 } catch (PDOException $e) {
-    Response::error('Authentication database error.', 500);
+    error_log('[librowse] auth: ' . $e->getMessage());
+    Response::error('Sign-in is temporarily unavailable. Please try again.', 500, api_debug() ? ['details' => $e->getMessage()] : []);
 } catch (Throwable $e) {
-    $isDebug = filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN);
-    $details = $isDebug ? ['details' => $e->getMessage()] : [];
-    Response::error('Authentication service error.', 500, $details);
+    error_log('[librowse] auth: ' . $e->getMessage());
+    Response::error('Sign-in is temporarily unavailable. Please try again.', 500, api_debug() ? ['details' => $e->getMessage()] : []);
 }

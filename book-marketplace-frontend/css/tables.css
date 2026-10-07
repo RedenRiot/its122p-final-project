@@ -1,0 +1,104 @@
+/* =========================================================================
+   TABLE STYLES
+   ========================================================================= */
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    overflow: hidden;
+}
+
+#browse table {
+    min-width: 980px;
+}
+
+#transactions table,
+#dashboard-listing-table {
+    min-width: 640px;
+}
+
+thead th {
+    background: var(--paper);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+}
+
+td {
+    padding: 12px 14px;
+    border-top: 1px solid var(--rule);
+    vertical-align: middle;
+}
+
+tbody tr:first-child td {
+    border-top: none;
+}
+
+tbody tr:hover td {
+    background: #fbf3e8;
+}
+
+#book-list td:nth-child(2) {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+td[colspan] {
+    padding: 36px 14px;
+    text-align: center;
+    color: var(--muted);
+}
+
+/* =========================================================================
+   DETAIL TABLE
+   ========================================================================= */
+
+.detail-table {
+    max-width: 640px;
+}
+
+.detail-table th {
+    width: 38%;
+    text-align: left;
+    padding: 10px 14px;
+    background: var(--paper);
+    color: var(--muted);
+    font-weight: 600;
+    border-top: 1px solid var(--rule);
+}
+
+.detail-table tr:first-child th {
+    border-top: none;
+}
+
+#new-listing-result {
+    margin-top: 28px;
+    padding-top: 8px;
+    border-top: 1px solid var(--rule);
+}
+
+/* =========================================================================
+   COZY THEME
+   ========================================================================= */
+
+thead th {
+    background: #f6ecdf;
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+    }
+}

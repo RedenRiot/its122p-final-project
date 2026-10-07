@@ -5,7 +5,12 @@
  */
 require_once __DIR__ . '/../lib/bootstrap.php';
 
-require_authenticated_user($pdo, ['Admin']);
+/* The audit log is for Staff and Admin only; only Admin can add or archive records */
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_authenticated_user($pdo, ['Staff', 'Admin']);
+} else {
+    require_authenticated_user($pdo, ['Admin']);
+}
 
 $crud = new Crud(
     pdo: $pdo,

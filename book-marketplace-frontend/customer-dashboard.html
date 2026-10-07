@@ -1,24 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-public-page="true">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Courier+Prime:wght@400;700&display=swap">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
     <title>Dashboard - Librowse</title>
     <script src="session.js"></script>
+    <script src="consent.js"></script>
 </head>
 <body>
 <header>
     <h1>Librowse Book Exchange</h1>
-    <p>Buy, trade, and exchange books with other users.</p>
     <nav>
         <a href="index.html">Home</a>
         <a href="browse.html">Browse Books</a>
         <a href="list-book.html">List a Book</a>
-        <a href="transactions.html">Dashboard</a>
+        <a href="customer-dashboard.html" class="active-nav" aria-current="page">Dashboard</a>
         <a href="support.html">Refund &amp; Report</a>
-        <a href="login.html">Login</a>
-        <a href="register.html">Register</a>
     </nav>
     <div id="auth-status" class="auth-status">
         <a href="login.html">Sign in</a>
@@ -29,9 +31,11 @@
     <section id="dashboard-welcome">
         <h2 id="dashboard-title">My Dashboard</h2>
         <p id="dashboard-subtitle">Welcome back! Here is a summary of your activity.</p>
+        <img class="welcome-art" src="assets/books-stack.svg" alt="" width="200" height="170">
     </section>
 
     <section id="dashboard-listings">
+        <img class="section-icon" src="assets/icon-listings.svg" alt="" width="52" height="52">
         <h2>My Listings</h2>
         <p>Summary of books you have listed on the marketplace.</p>
         <div class="dashboard-cards">
@@ -64,8 +68,9 @@
     </section>
 
     <section id="dashboard-transactions">
+        <img class="section-icon" src="assets/icon-transactions.svg" alt="" width="52" height="52">
         <h2>My Transactions</h2>
-        <p>Summary of your book purchases and trades. <a href="transactions.html">View all transactions →</a></p>
+        <p>Summary of your book purchases and trades. <a href="transactions.html">View all transactions</a></p>
         <div class="dashboard-cards">
             <div class="dashboard-card">
                 <div class="dashboard-card-label">Total</div>
@@ -87,8 +92,9 @@
     </section>
 
     <section id="dashboard-refunds">
+        <img class="section-icon" src="assets/icon-refund.svg" alt="" width="52" height="52">
         <h2>Refund Requests</h2>
-        <p>Summary of refund requests you have submitted. <a href="support.html">Submit a refund →</a></p>
+        <p>Summary of refund requests you have submitted. <a href="support.html">Submit a refund</a></p>
         <div class="dashboard-cards">
             <div class="dashboard-card dashboard-card-yellow">
                 <div class="dashboard-card-label">Pending</div>
@@ -103,12 +109,12 @@
                 <div class="dashboard-card-value" id="stat-refund-other">—</div>
             </div>
         </div>
-        <p class="dashboard-note">Refund statistics are loaded from the API when the backend is running.</p>
     </section>
 
     <section id="dashboard-reports">
+        <img class="section-icon" src="assets/icon-report.svg" alt="" width="52" height="52">
         <h2>My Reports</h2>
-        <p>Summary of reports you have submitted. <a href="support.html">Submit a report →</a></p>
+        <p>Summary of reports you have submitted. <a href="support.html">Submit a report</a></p>
         <div class="dashboard-cards">
             <div class="dashboard-card dashboard-card-yellow">
                 <div class="dashboard-card-label">Pending</div>
@@ -123,7 +129,6 @@
                 <div class="dashboard-card-value" id="stat-report-resolved">—</div>
             </div>
         </div>
-        <p class="dashboard-note">Report statistics are loaded from the API when the backend is running.</p>
     </section>
 </main>
 <footer>

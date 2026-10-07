@@ -1,11 +1,8 @@
 function librowseApiBase() {
     if (window.LIBROWSE_API_BASE) return String(window.LIBROWSE_API_BASE).replace(/\/$/, '');
     const host = window.location.hostname || '127.0.0.1';
-    const isLocal = (host === 'localhost' || host === '127.0.0.1' || window.location.protocol === 'file:') && window.location.port !== '8000';
-    if (isLocal) {
-        return 'http://127.0.0.1:8000/api';
-    }
-    if (window.location.port === '8000') {
+    const port = window.location.port;
+    if (port === '8000') {
         const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
         return `${protocol}//${host}:8000/api`;
     }
@@ -24,6 +21,7 @@ const managementState = {
     transactions: [],
     refunds: [],
     records: [],
+    activityLogs: [],
     activeTab: null,
     editingCategoryId: null,
     editingBookId: null
@@ -222,8 +220,13 @@ async function loadRecords() {
     return managementState.records;
 }
 
+async function loadActivityLogs() {
+    managementState.activityLogs = await mgApi("activity_logs.php?limit=500&offset=0");
+    return managementState.activityLogs;
+}
+
 async function reloadCoreData() {
-    await Promise.all([loadAllUsers(), loadCategories(), loadBooks(), loadListings(), loadReports(), loadTransactions(), loadRefunds()]);
+    await Promise.all([loadAllUsers(), loadCategories(), loadBooks(), loadListings(), loadReports(), loadTransactions(), loadRefunds(), loadActivityLogs()]);
     try { await loadRecords(); } catch (e) { console.warn("Records unavailable:", e.message); }
 }
 
@@ -237,6 +240,7 @@ function renderDashboardStats() {
     const pendingRefunds = managementState.refunds.filter(r => r.status === "Pending");
     const openTransactions = managementState.transactions.filter(t => ["Pending","Accepted","Disputed"].includes(t.status));
     const activeListings = managementState.listings.filter(l => l.status === "Available");
+    const visitLogs = managementState.activityLogs.filter(log => mgRole(log.activity_type) === "visit").length;
 
     const cards = managementState.role === "admin" ? [
         ["Users", managementState.users.length],
@@ -246,7 +250,8 @@ function renderDashboardStats() {
         ["Pending Reports", pendingReports.length],
         ["Pending Refunds", pendingRefunds.length],
         ["Staff", staff.length],
-        ["Categories", managementState.categories.length]
+        ["Categories", managementState.categories.length],
+        ["Visit Logs", visitLogs]
     ] : [
         ["Customers", customers.length],
         ["Pending Forms", managementState.reports.filter(r => ["Verification_Form","Seller_Application"].includes(r.report_category) && ["Pending","Under_Review"].includes(r.status)).length],
@@ -291,17 +296,17 @@ function renderUsersTable() {
                 <td>${user.user_id}</td>
                 <td><strong>${mgEscape(user.username)}</strong><div class="muted">${mgEscape(user.email)}</div></td>
                 <td>
-                    <select data-user-role="${user.user_id}" ${managementState.role === "staff" ? "disabled" : ""}>
+                    <select aria-label="Role for ${mgEscape(user.username)}" data-user-role="${user.user_id}" ${managementState.role === "staff" ? "disabled" : ""}>
                         ${roleOptions.map(r => `<option value="${r}" ${selected(r,user.role)}>${r}</option>`).join("")}
                     </select>
                 </td>
                 <td>
-                    <select data-user-status="${user.user_id}">
-                        ${["Active","Suspended","Banned","Pending Verification","Locked"].map(s => `<option value="${s}" ${selected(s,user.status)}>${s}</option>`).join("")}
+                    <select aria-label="Status for ${mgEscape(user.username)}" data-user-status="${user.user_id}" ${managementState.role === "staff" && user.status === "Locked" ? "disabled title=\"Only an administrator can unlock this account\"" : ""}>
+                        ${(managementState.role === "staff" && user.status !== "Locked" ? ["Active","Suspended","Banned","Pending Verification"] : ["Active","Suspended","Banned","Pending Verification","Locked"]).map(s => `<option value="${s}" ${selected(s,user.status)}>${s}</option>`).join("")}
                     </select>
                 </td>
                 <td>
-                    <textarea data-user-permission="${user.user_id}" aria-label="Permissions for ${mgEscape(user.username)}">${mgEscape(perms)}</textarea>
+                    <textarea data-user-permission="${user.user_id}" ${managementState.role === "staff" ? "disabled" : ""} aria-label="Permissions for ${mgEscape(user.username)}">${mgEscape(perms)}</textarea>
                 </td>
                 <td>${badge(user.status)}</td>
                 <td>${formatDate(user.created_at)}</td>
@@ -309,8 +314,8 @@ function renderUsersTable() {
                     <div class="management-actions">
                         ${user.status === "Locked" && managementState.role === "admin" ? `<button class="management-btn success small" onclick="unlockUser(${user.user_id})">Unlock</button>` : ""}
                         ${user.status === "Locked" && (managementState.reports || []).some(r => Number(r.submitted_by_id) === Number(user.user_id) && ["Pending","Under_Review"].includes(r.status) && parseFormData(r.form_data)?.type === "unlock_request") ? `<span class="management-badge warning">Requested unlock</span>` : ""}
-                        <button class="management-btn primary small" onclick="saveUser(${user.user_id})">Save</button>
-                        ${canDelete ? `<button class="management-btn danger small" onclick="deleteUser(${user.user_id})">Delete</button>` : ""}
+                        ${managementState.role === "staff" && user.status === "Locked" ? `<span class="muted">Admin unlocks</span>` : `<button class="management-btn primary small" onclick="saveUser(${user.user_id})">Save</button>`}
+                        ${canDelete ? `<button class="management-btn danger small" onclick="deleteUser(${user.user_id})">Archive</button>` : ""}
                     </div>
                 </td>
             </tr>
@@ -324,10 +329,9 @@ async function saveUser(userId) {
         const statusEl = document.querySelector(`[data-user-status="${userId}"]`);
         const permissionEl = document.querySelector(`[data-user-permission="${userId}"]`);
 
-        const payload = {
-            status: statusEl.value,
-            permission: parsePermissions(permissionEl.value)
-        };
+        // Staff may only change the status; admins can also change permissions and role
+        const payload = { status: statusEl.value };
+        if (managementState.role === "admin") payload.permission = parsePermissions(permissionEl.value);
 
         if (managementState.role === "admin" && roleEl) payload.role = roleEl.value;
 
@@ -346,7 +350,6 @@ async function saveUser(userId) {
     }
 }
 
-/* Unlock a Locked account and close any unlock requests it sent */
 async function unlockUser(userId) {
     try {
         await mgApi(`user.php?id=${userId}`, {
@@ -354,6 +357,7 @@ async function unlockUser(userId) {
             headers: {"Content-Type":"application/json"},
             body: JSON.stringify({ status: "Active" })
         });
+        // Close any open unlock requests from this user
         const openRequests = (managementState.reports || []).filter(r =>
             Number(r.submitted_by_id) === Number(userId) &&
             ["Pending","Under_Review"].includes(r.status) &&
@@ -374,7 +378,7 @@ async function unlockUser(userId) {
             ? "Account unlocked and the unlock request marked as resolved."
             : "Account unlocked. The user can sign in again.", "success");
         await loadAllUsers();
-        if (openRequests.length && typeof loadReports === "function") await loadReports();
+        if (openRequests.length) await loadReports();
         renderUsersTable();
         if (typeof renderReportsTable === "function") renderReportsTable();
         renderDashboardStats();
@@ -384,11 +388,11 @@ async function unlockUser(userId) {
 }
 
 async function deleteUser(userId) {
-    if (!confirm(`Remove user #${userId} from the platform?`)) return;
+    if (!confirm(`Archive user #${userId}? They will no longer be able to sign in. It will be hidden from the app, but the record is kept in the database for logging.`)) return;
 
     try {
         await mgApi(`user.php?id=${userId}`, {method:"DELETE"});
-        showMgmtAlert("User removed.", "success");
+        showMgmtAlert("User archived. The record is kept for logging.", "success");
         await loadAllUsers();
         renderUsersTable();
         renderDashboardStats();
@@ -504,7 +508,7 @@ function renderBooksTable() {
             <td>
                 <div class="management-actions">
                     <button class="management-btn primary small" onclick="editBook(${book.book_id})">Edit</button>
-                    <button class="management-btn danger small" onclick="deleteBook(${book.book_id})">Delete</button>
+                    <button class="management-btn danger small" onclick="deleteBook(${book.book_id})" title="Soft-delete: hides from catalog but keeps the record">Archive</button>
                 </div>
             </td>
         </tr>
@@ -512,10 +516,10 @@ function renderBooksTable() {
 }
 
 async function deleteBook(bookId) {
-    if (!confirm(`Delete catalog book #${bookId}?`)) return;
+    if (!confirm(`Archive catalog book #${bookId}? It will be hidden from the app, but the record is kept in the database for logging.`)) return;
     try {
         await mgApi(`books_catalog.php?id=${bookId}`, {method:"DELETE"});
-        showMgmtAlert("Catalog book deleted.", "success");
+        showMgmtAlert("Catalog book archived. The record is kept for logging.", "success");
         await loadBooks();
         await loadListings();
         renderBooksTable();
@@ -597,7 +601,7 @@ function renderCategoriesTable() {
             <td>
                 <div class="management-actions">
                     <button class="management-btn primary small" onclick="editCategory(${c.category_id})">Edit</button>
-                    <button class="management-btn danger small" onclick="deleteCategory(${c.category_id})">Delete</button>
+                    <button class="management-btn danger small" onclick="deleteCategory(${c.category_id})">Archive</button>
                 </div>
             </td>
         </tr>
@@ -605,10 +609,10 @@ function renderCategoriesTable() {
 }
 
 async function deleteCategory(categoryId) {
-    if (!confirm(`Delete category #${categoryId}?`)) return;
+    if (!confirm(`Archive category #${categoryId}? It will be hidden from the app, but the record is kept in the database for logging.`)) return;
     try {
         await mgApi(`book_categories.php?id=${categoryId}`, {method:"DELETE"});
-        showMgmtAlert("Category deleted.", "success");
+        showMgmtAlert("Category archived. The record is kept for logging.", "success");
         await loadCategories();
         await loadBooks();
         renderCategoriesTable();
@@ -634,7 +638,7 @@ function renderListingsTable() {
             <td>${mgEscape(l.condition)}</td>
             <td>${formatMoney(l.price)}</td>
             <td>
-                <select id="listing-status-${l.inventory_id}">
+                <select aria-label="Status for listing #${l.inventory_id}" id="listing-status-${l.inventory_id}">
                     ${["Available","In_transaction","Sold","Traded","Removed"].map(s => `<option value="${s}" ${selected(s,l.status)}>${s.replaceAll("_"," ")}</option>`).join("")}
                 </select>
             </td>
@@ -706,12 +710,12 @@ function renderReportsTable() {
             <td>${detailsCell}</td>
             <td>${formatDate(r.submitted_at)}</td>
             <td>
-                <select id="report-status-${r.report_id}">
+                <select aria-label="Status for report #${r.report_id}" id="report-status-${r.report_id}">
                     ${["Pending","Under_Review","Approved","Rejected","Resolved","Dismissed"].map(s => `<option value="${s}" ${selected(s,r.status)}>${s.replaceAll("_"," ")}</option>`).join("")}
                 </select>
             </td>
             <td>
-                <textarea id="report-notes-${r.report_id}" placeholder="Resolution/review notes">${mgEscape(r.resolution_notes || "")}</textarea>
+                <textarea aria-label="Resolution notes for report #${r.report_id}" id="report-notes-${r.report_id}" placeholder="Resolution/review notes">${mgEscape(r.resolution_notes || "")}</textarea>
             </td>
             <td>
                 <div class="management-actions">
@@ -746,6 +750,15 @@ async function saveReport(reportId) {
     }
 }
 
+/* Valid next statuses — the server enforces the same rules */
+const TX_NEXT = {
+    Pending:  ["Accepted", "Cancelled", "Disputed"],
+    Accepted: ["Completed", "Cancelled", "Disputed"],
+    Disputed: ["Completed", "Cancelled"],
+    Completed: [],
+    Cancelled: []
+};
+
 function renderTransactionsTable() {
     const tbody = document.getElementById("transactions-body");
     if (!tbody) return;
@@ -767,11 +780,11 @@ function renderTransactionsTable() {
             <td>${mgEscape(um[t.managed_by_staff_id]?.username || "—")}</td>
             <td>${formatDate(t.created_at)}</td>
             <td>
-                <select id="transaction-status-${t.transaction_id}">
-                    ${["Pending","Accepted","Completed","Cancelled","Disputed"].map(s => `<option value="${s}" ${selected(s,t.status)}>${s}</option>`).join("")}
+                <select aria-label="Status for transaction #${t.transaction_id}" id="transaction-status-${t.transaction_id}" ${(TX_NEXT[t.status] || []).length ? "" : "disabled"}>
+                    ${[t.status, ...(TX_NEXT[t.status] || [])].map(s => `<option value="${s}" ${selected(s,t.status)}>${s}</option>`).join("")}
                 </select>
             </td>
-            <td><button class="management-btn primary small" onclick="saveTransaction(${t.transaction_id})">Save</button></td>
+            <td>${(TX_NEXT[t.status] || []).length ? `<button class="management-btn primary small" onclick="saveTransaction(${t.transaction_id})">Save</button>` : `<span class="muted">Final</span>`}</td>
         </tr>`;
     }).join("") || `<tr><td colspan="10" class="management-empty">No transactions found.</td></tr>`;
 }
@@ -809,8 +822,8 @@ function renderRefundsTable() {
             <td>${badge(r.status)}</td>
             <td>${mgEscape(um[r.processed_by_staff_id]?.username || "—")}</td>
             <td>
-                ${managementState.role === "staff" ? `
-                <select id="refund-status-${r.refund_id}">
+                ${managementState.role === "staff" && r.status === "Pending" ? `
+                <select aria-label="Decision for refund #${r.refund_id}" id="refund-status-${r.refund_id}">
                     ${["Pending","Approved","Rejected"].map(s => `<option value="${s}" ${selected(s,r.status)}>${s}</option>`).join("")}
                 </select>
                 <button class="management-btn primary small" onclick="saveRefund(${r.refund_id})">Save</button>
@@ -848,9 +861,33 @@ function renderRecordsTable() {
             <td>${mgEscape(r.record_type.replaceAll("_"," "))}</td>
             <td class="management-code">${mgEscape(typeof r.details === "string" ? r.details : JSON.stringify(r.details || {}))}</td>
             <td>${formatDate(r.created_at)}</td>
-            <td><button class="management-btn danger small" onclick="deleteRecord(${r.record_id})">Delete</button></td>
+            <td><button class="management-btn danger small" onclick="deleteRecord(${r.record_id})" title="Soft-delete: hides from view but keeps the audit record">Archive</button></td>
         </tr>
     `).join("") || `<tr><td colspan="6" class="management-empty">No system records found.</td></tr>`;
+}
+
+function renderActivityLogsTable() {
+    const tbody = document.getElementById("activity-logs-body");
+    if (!tbody) return;
+    const um = userMap();
+
+    tbody.innerHTML = managementState.activityLogs.map(log => {
+        const details = typeof log.details === "string" ? log.details : JSON.stringify(log.details || {});
+        const target = [log.target_type, log.target_id].filter(Boolean).join(" #") || (log.page_path || "—");
+        return `
+            <tr>
+                <td>${log.activity_id}</td>
+                <td>${mgEscape(um[log.actor_user_id]?.username || (log.visitor_key ? `Visitor ${log.visitor_key}` : "—"))}</td>
+                <td>${mgEscape(log.activity_type)}</td>
+                <td>${mgEscape(log.activity_action)}</td>
+                <td>${badge(log.outcome)}</td>
+                <td>${mgEscape(log.reason || "—")}</td>
+                <td>${mgEscape(target)}</td>
+                <td class="management-code">${mgEscape(details)}</td>
+                <td>${formatDate(log.created_at)}</td>
+            </tr>
+        `;
+    }).join("") || `<tr><td colspan="9" class="management-empty">No activity logs found.</td></tr>`;
 }
 
 async function submitRecordForm(event) {
@@ -875,10 +912,10 @@ async function submitRecordForm(event) {
 }
 
 async function deleteRecord(recordId) {
-    if (!confirm(`Delete system record #${recordId}?`)) return;
+    if (!confirm(`Archive system record #${recordId}? It will be hidden from the app, but the record is kept in the database for logging.`)) return;
     try {
         await mgApi(`system_records.php?id=${recordId}`, {method:"DELETE"});
-        showMgmtAlert("System record deleted.", "success");
+        showMgmtAlert("System record archived. The record is kept for logging.", "success");
         await loadRecords();
         renderRecordsTable();
     } catch (error) {
@@ -920,6 +957,57 @@ function refreshRenderedData() {
     renderTransactionsTable();
     renderRefundsTable();
     renderRecordsTable();
+    renderActivityLogsTable();
+}
+
+/* ── Loading placeholders while data arrives ───────────────────────────── */
+function showLoadingPlaceholders() {
+    document.querySelectorAll(".management-table tbody, tbody[id$='-body']").forEach(tbody => {
+        const cols = tbody.closest("table")?.querySelectorAll("thead th").length || 6;
+        tbody.innerHTML = `<tr class="management-loading-row"><td colspan="${cols}"><span class="mg-spinner" aria-hidden="true"></span> Loading…</td></tr>`;
+    });
+    const stats = document.getElementById("overview-stats");
+    const statCount = managementState.role === "admin" ? 9 : 4;
+    if (stats) stats.innerHTML = Array.from({ length: statCount }, () =>
+        `<div class="management-card mg-skeleton"><div class="management-stat-label">Loading…</div><div class="management-stat-value">&nbsp;</div></div>`).join("");
+}
+
+/* ── Busy buttons: any action button is disabled until its request finishes ── */
+let mgLastButton = null;
+document.addEventListener("click", e => {
+    const btn = e.target.closest("button");
+    if (btn) mgLastButton = btn;
+}, true);
+function withBusyButton(fn, busyText) {
+    return async function (...args) {
+        const btn = mgLastButton;
+        mgLastButton = null;
+        if (btn && btn.dataset.busy === "1") return;          // ignore double clicks
+        const label = btn ? btn.innerHTML : "";
+        if (btn) { btn.dataset.busy = "1"; btn.disabled = true; btn.innerHTML = `<span class="mg-spinner" aria-hidden="true"></span> ${busyText}`; }
+        try { return await fn.apply(this, args); }
+        finally {
+            mgDirty = false;
+            if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = label; delete btn.dataset.busy; }
+        }
+    };
+}
+[["saveUser","Saving…"],["unlockUser","Unlocking…"],["deleteUser","Archiving…"],["saveListing","Saving…"],
+ ["saveReport","Saving…"],["saveTransaction","Saving…"],["saveRefund","Saving…"],["deleteBook","Archiving…"],
+ ["deleteCategory","Archiving…"],["deleteRecord","Archiving…"],["submitBookForm","Saving…"],
+ ["submitCategoryForm","Saving…"],["submitRecordForm","Saving…"],["submitStaffIssue","Sending…"]
+].forEach(([name, text]) => {
+    if (typeof window[name] === "function") window[name] = withBusyButton(window[name], text);
+});
+
+/* ── Auto-refresh that never throws away unsaved edits ──────────────────── */
+let mgDirty = false;
+document.addEventListener("input", e => { if (e.target.closest(".management-section")) mgDirty = true; }, true);
+document.addEventListener("change", e => { if (e.target.closest(".management-section")) mgDirty = true; }, true);
+function safeToAutoRefresh() {
+    if (document.hidden || mgDirty) return false;
+    const active = document.activeElement;
+    return !(active && active.closest && active.closest(".management-section") && /^(INPUT|SELECT|TEXTAREA)$/.test(active.tagName));
 }
 
 async function initManagementPage() {
@@ -946,6 +1034,7 @@ async function initManagementPage() {
     document.getElementById("staff-issue-form")?.addEventListener("submit", submitStaffIssue);
 
     setActiveTab("overview");
+    showLoadingPlaceholders();
 
     try {
         await reloadCoreData();
@@ -955,6 +1044,7 @@ async function initManagementPage() {
     }
 
     setInterval(async () => {
+        if (!safeToAutoRefresh()) return;      // someone is editing — try again next time
         try {
             await reloadCoreData();
             refreshRenderedData();

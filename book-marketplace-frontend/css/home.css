@@ -1,0 +1,267 @@
+/* =========================================================================
+   HOME PAGE STYLES
+   Hero section with copy, actions, and styling
+   ========================================================================= */
+
+#home {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 40px;
+    padding: 56px 56px 0;
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    overflow: hidden;
+}
+
+#home .home-copy {
+    padding-bottom: 56px;
+}
+
+#home h2 {
+    font-size: clamp(36px, 5vw, 56px);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    color: #fff;
+    margin-bottom: 18px;
+}
+
+#home p {
+    color: #c9d3dd;
+    font-size: 17px;
+    max-width: 46ch;
+    margin: 0 0 12px;
+}
+
+#home .home-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 28px;
+}
+
+#home .home-actions a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 128px;
+    padding: 12px 20px;
+    border-radius: var(--r-md);
+    font-weight: 600;
+    font-size: 15px;
+    text-decoration: none;
+    transition: background .15s, border-color .15s;
+}
+
+#home .home-actions a.home-btn-primary {
+    background: var(--tab);
+    color: var(--ink);
+}
+
+#home .home-actions a.home-btn-primary:hover {
+    background: #f0c75c;
+}
+
+#home .home-actions a.home-btn-secondary {
+    background: var(--spine);
+    color: #fff;
+}
+
+#home .home-actions a.home-btn-secondary:hover {
+    background: #366b5d;
+}
+
+/* Login / Register / Dashboard share one consistent outline style */
+#home .home-actions a.home-btn-login,
+#home .home-actions a.home-btn-register,
+#home .home-actions a.home-btn-dashboard {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, .4);
+}
+
+#home .home-actions a.home-btn-login:hover,
+#home .home-actions a.home-btn-register:hover,
+#home .home-actions a.home-btn-dashboard:hover {
+    background: rgba(255, 255, 255, .08);
+    border-color: #fff;
+}
+
+/* =========================================================================
+   COZY THEME - HOME
+   ========================================================================= */
+
+body {
+    background:
+        radial-gradient(1200px 500px at 100% -10%, #efe0cc 0%, transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, #efe2d2 0%, transparent 60%),
+        var(--paper);
+    font-size: 16px;
+}
+
+#home {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 24px;
+    padding: 48px 48px 40px 56px;
+    background:
+        radial-gradient(500px 300px at 85% 30%, #f6e9d8 0%, transparent 70%),
+        linear-gradient(135deg, #ead8c1 0%, #e2cbb0 100%);
+    color: var(--ink);
+    border: 1px solid var(--rule-strong);
+}
+
+#home .home-copy {
+    padding-bottom: 0;
+}
+
+#home h2 {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+#home p {
+    color: var(--ink-2);
+}
+
+.home-art {
+    width: 100%;
+    height: auto;
+    max-width: 520px;
+    justify-self: center;
+}
+
+#home .home-actions a {
+    border-radius: 999px;
+}
+
+#home .home-actions a.home-btn-primary {
+    background: var(--spine);
+    color: #fffaf3;
+}
+
+#home .home-actions a.home-btn-primary:hover {
+    background: var(--spine-dark);
+}
+
+#home .home-actions a.home-btn-secondary {
+    background: #8fa383;
+    color: #fffaf3;
+}
+
+#home .home-actions a.home-btn-secondary:hover {
+    background: #7a9070;
+}
+
+#home .home-actions a.home-btn-login,
+#home .home-actions a.home-btn-register,
+#home .home-actions a.home-btn-dashboard {
+    background: rgba(255, 250, 243, .65);
+    color: var(--ink);
+    border: 1px solid var(--rule-strong);
+}
+
+#home .home-actions a.home-btn-login:hover,
+#home .home-actions a.home-btn-register:hover,
+#home .home-actions a.home-btn-dashboard:hover {
+    background: var(--surface);
+    border-color: var(--spine);
+}
+
+#home-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    overflow: visible;
+}
+
+.home-step {
+    padding: 26px 24px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-lg);
+}
+
+.home-step img {
+    display: block;
+    margin-bottom: 14px;
+}
+
+.home-step h3 {
+    margin: 0 0 6px;
+    font-size: 19px;
+    font-weight: 600;
+}
+
+.home-step p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (max-width: 960px) {
+    #home {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 40px 28px 0;
+        gap: 12px;
+    }
+
+    #home .home-copy {
+        padding-bottom: 8px;
+    }
+}
+
+@media (max-width: 960px) {
+    #home {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 36px 28px 24px;
+    }
+
+    .home-art {
+        max-width: 380px;
+    }
+
+    #home-steps {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 720px) {
+    main {
+        padding: 20px 14px 48px;
+    }
+
+    #home {
+        padding: 32px 20px 0;
+    }
+
+    #home .home-actions a {
+        min-width: 0;
+        flex: 1 1 calc(50% - 10px);
+    }
+
+    #home .home-actions a.home-btn-primary {
+        flex-basis: 100%;
+    }
+}
+
+@media (max-width: 720px) {
+    #home {
+        padding: 28px 20px 20px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+    }
+}

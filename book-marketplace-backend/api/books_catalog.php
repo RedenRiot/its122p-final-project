@@ -17,12 +17,17 @@ $crud = new Crud(
     primaryKey: 'book_id',
     insertable: ['category_id', 'managed_by_admin_id', 'title', 'author', 'isbn'],
     required: ['category_id', 'managed_by_admin_id', 'title', 'author', 'isbn'],
+    softDeleteColumn: 'deleted_at',
     searchable: ['title', 'author'],
 );
 
 
 $method = $_SERVER['REQUEST_METHOD'];
-$authenticatedUser = require_authenticated_user($pdo);
+if ($method === 'GET') {
+    $authenticatedUser = current_authenticated_user($pdo);
+} else {
+    $authenticatedUser = require_authenticated_user($pdo);
+}
 
 /**
  * Normalizes whatever the client sent for categories into a clean,
@@ -53,7 +58,7 @@ function fetch_category_ids(PDO $pdo, array $bookIds): array
 
     $placeholders = implode(', ', array_fill(0, count($bookIds), '?'));
     $stmt = $pdo->prepare(
-        "SELECT `book_id`, `category_id` FROM `BOOK_CATEGORY_MAP` WHERE `book_id` IN ({$placeholders}) ORDER BY `category_id` ASC"
+        "SELECT `book_id`, `category_id` FROM `BOOK_CATEGORY_MAP` WHERE `book_id` IN ({$placeholders}) AND `deleted_at` IS NULL ORDER BY `category_id` ASC"
     );
     $stmt->execute($bookIds);
 
@@ -64,18 +69,67 @@ function fetch_category_ids(PDO $pdo, array $bookIds): array
     return $map;
 }
 
+ensure_column($pdo, 'BOOK_CATEGORY_MAP', 'deleted_at');
+ensure_column($pdo, 'BOOK_CATEGORIES', 'deleted_at');
+
+/**
+ * Trims and checks title, author and ISBN. ISBN may be typed with spaces or
+ * hyphens; it is stored as 10 or 13 characters (digits, or a final X on ISBN-10).
+ */
+function validate_book_fields(array $body, bool $partial = false): array
+{
+    foreach (['title' => 255, 'author' => 255] as $field => $max) {
+        if (!$partial || array_key_exists($field, $body)) {
+            $value = trim((string) ($body[$field] ?? ''));
+            if ($value === '') Response::error(ucfirst($field) . ' is required.', 422);
+            if (text_length($value) > $max) Response::error(ucfirst($field) . " must be {$max} characters or fewer.", 422);
+            $body[$field] = $value;
+        }
+    }
+    if (!$partial || array_key_exists('isbn', $body)) {
+        $isbn = strtoupper(preg_replace('/[\s-]+/', '', (string) ($body['isbn'] ?? '')));
+        if (!preg_match('/^(\d{13}|\d{9}[\dX])$/', $isbn)) {
+            Response::error('ISBN must be 10 or 13 digits (hyphens and spaces are fine).', 422);
+        }
+        $body['isbn'] = $isbn;
+    }
+    return $body;
+}
+
+/** At least one category, and every chosen category must exist. */
+function valid_category_ids(PDO $pdo, array $ids): array
+{
+    if (!$ids) Response::error('Please select at least one category.', 422);
+    $marks = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM `BOOK_CATEGORIES` WHERE category_id IN ({$marks}) AND deleted_at IS NULL");
+    $stmt->execute($ids);
+    if ((int) $stmt->fetchColumn() !== count($ids)) Response::error('One of the chosen categories no longer exists.', 422);
+    return $ids;
+}
+
 /** Replaces the BOOK_CATEGORY_MAP rows for one book with $categoryIds. */
 function save_category_map(PDO $pdo, int $bookId, array $categoryIds): void
 {
-    $pdo->prepare('DELETE FROM `BOOK_CATEGORY_MAP` WHERE `book_id` = :book_id')
-        ->execute(['book_id' => $bookId]);
+    // Soft-remove links that are no longer chosen (kept for logging)
+    $categoryIds = array_values(array_unique(array_map('intval', $categoryIds)));
+    $params = ['book_id' => $bookId];
+    $keep = '';
+    if ($categoryIds) {
+        $marks = [];
+        foreach ($categoryIds as $i => $cid) { $marks[] = ":c{$i}"; $params["c{$i}"] = $cid; }
+        $keep = ' AND `category_id` NOT IN (' . implode(',', $marks) . ')';
+    }
+    $pdo->prepare("UPDATE `BOOK_CATEGORY_MAP` SET `deleted_at` = NOW() WHERE `book_id` = :book_id AND `deleted_at` IS NULL{$keep}")
+        ->execute($params);
 
     if (!$categoryIds) {
         return;
     }
 
+    // Add new links, or bring back ones that were soft-removed earlier
     $stmt = $pdo->prepare(
-        'INSERT INTO `BOOK_CATEGORY_MAP` (`book_id`, `category_id`) VALUES (:book_id, :category_id)'
+        'INSERT INTO `BOOK_CATEGORY_MAP` (`book_id`, `category_id`) VALUES (:book_id, :category_id)
+         ON DUPLICATE KEY UPDATE `deleted_at` = NULL'
     );
     foreach ($categoryIds as $categoryId) {
         $stmt->execute(['book_id' => $bookId, 'category_id' => $categoryId]);
@@ -97,7 +151,40 @@ try {
                 $row['category_ids'] = $categoryMap[(int) $row['book_id']] ?? [(int) $row['category_id']];
                 Response::json($row);
             } else {
-                $rows = $crud->index($_GET);
+                $search = trim((string) ($_GET['search'] ?? $_GET['q'] ?? ''));
+                $categoryId = !empty($_GET['category_id']) ? (int) $_GET['category_id'] : null;
+
+                if ($search !== '' || $categoryId !== null) {
+                    $where = ['b.deleted_at IS NULL'];
+                    $params = [];
+
+                    if ($search !== '') {
+                        $searchLower = mb_strtolower($search, 'UTF-8');
+                        $cleanIsbn = strtoupper(preg_replace('/[\s-]+/', '', $search));
+                        $where[] = '(LOWER(b.title) LIKE :s_title OR LOWER(b.author) LIKE :s_author OR LOWER(b.isbn) LIKE :s_isbn' . ($cleanIsbn !== '' ? ' OR REPLACE(REPLACE(b.isbn, "-", ""), " ", "") LIKE :s_clean_isbn' : '') . ')';
+                        $params['s_title'] = "%{$searchLower}%";
+                        $params['s_author'] = "%{$searchLower}%";
+                        $params['s_isbn'] = "%{$searchLower}%";
+                        if ($cleanIsbn !== '') $params['s_clean_isbn'] = "%{$cleanIsbn}%";
+                    }
+
+                    if ($categoryId !== null) {
+                        $where[] = '(b.category_id = :cat_id OR b.book_id IN (SELECT book_id FROM `BOOK_CATEGORY_MAP` WHERE category_id = :cat_map_id AND deleted_at IS NULL))';
+                        $params['cat_id'] = $categoryId;
+                        $params['cat_map_id'] = $categoryId;
+                    }
+
+                    $limit = isset($_GET['limit']) ? min(1000, max(1, (int) $_GET['limit'])) : 500;
+                    $offset = isset($_GET['offset']) ? max(0, (int) $_GET['offset']) : 0;
+
+                    $sql = "SELECT b.* FROM `BOOKS_CATALOG` b WHERE " . implode(' AND ', $where) . " ORDER BY b.book_id ASC LIMIT {$limit} OFFSET {$offset}";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    $rows = $stmt->fetchAll();
+                } else {
+                    $rows = $crud->index($_GET);
+                }
+
                 $categoryMap = fetch_category_ids($pdo, array_column($rows, 'book_id'));
                 foreach ($rows as &$row) {
                     $row['category_ids'] = $categoryMap[(int) $row['book_id']] ?? [(int) $row['category_id']];
@@ -112,10 +199,17 @@ try {
                 Response::error('Only Customers and Administrators may create book catalog entries.', 403);
             }
             $body = read_json_body();
-            $categoryIds = extract_category_ids($body);
+            $body = validate_book_fields($body);
+            $categoryIds = valid_category_ids($pdo, extract_category_ids($body));
 
-            if (!$categoryIds) {
-                Response::error('Please select at least one category.', 422);
+            /* Same ISBN already in the catalog? Reuse it instead of creating a duplicate */
+            $existing = $pdo->prepare('SELECT * FROM `BOOKS_CATALOG` WHERE isbn = :isbn AND deleted_at IS NULL ORDER BY book_id ASC LIMIT 1');
+            $existing->execute(['isbn' => $body['isbn']]);
+            if ($found = $existing->fetch()) {
+                $map = fetch_category_ids($pdo, [$found['book_id']]);
+                $found['category_ids'] = $map[(int) $found['book_id']] ?? [(int) $found['category_id']];
+                $found['reused'] = true;
+                Response::json($found, 200);
             }
 
             /* category_id keeps the first selected category, satisfying the
@@ -150,12 +244,10 @@ try {
             }
 
             $body = read_json_body();
+            $body = validate_book_fields($body, partial: true);
             $categoryIds = null;
             if (isset($body['category_ids']) || isset($body['category_id'])) {
-                $categoryIds = extract_category_ids($body);
-                if (!$categoryIds) {
-                    Response::error('Please select at least one category.', 422);
-                }
+                $categoryIds = valid_category_ids($pdo, extract_category_ids($body));
                 $body['category_id'] = $categoryIds[0];
             }
 
@@ -179,7 +271,7 @@ try {
             if ($id === null) {
                 Response::error("Query parameter 'book_id' (as ?id=) is required for deletes.", 400);
             }
-            /* BOOK_CATEGORY_MAP rows are removed automatically via ON DELETE CASCADE */
+            /* Soft delete: the book row and its category links stay in the database */
             $ok = $crud->delete($id);
             if (!$ok) {
                 Response::error("Record with book_id = {$id} not found.", 404);
@@ -193,14 +285,5 @@ try {
 } catch (InvalidArgumentException $e) {
     Response::error($e->getMessage(), 422);
 } catch (PDOException $e) {
-    $isDebug = filter_var($_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG') ?? false, FILTER_VALIDATE_BOOLEAN);
-    $details = $isDebug ? ['details' => $e->getMessage()] : [];
-    $code = (int) ($e->errorInfo[1] ?? 0);
-    if ($code === 1062) {
-        Response::error('A record with these unique values already exists.', 409, $details);
-    } elseif (in_array($code, [1451, 1452], true)) {
-        Response::error('This operation violates a foreign key relationship.', 409, $details);
-    } else {
-        Response::error('Database error.', 500, $details);
-    }
+    database_error_response($e);
 }

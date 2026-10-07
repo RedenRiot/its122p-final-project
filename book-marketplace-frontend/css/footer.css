@@ -1,0 +1,42 @@
+/* =========================================================================
+   FOOTER STYLES
+   ========================================================================= */
+
+footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 32px;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--rule);
+    background: var(--surface);
+}
+
+footer p {
+    margin: 0;
+}
+
+footer p:first-child {
+    font-family: var(--font-head);
+    font-weight: 700;
+    color: var(--ink);
+}
+
+/* COZY THEME */
+footer {
+    background: #e9d6be;
+    border-top-color: var(--rule-strong);
+    color: var(--ink-2);
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+
+@media (max-width: 720px) {
+    footer {
+        flex-direction: column;
+        padding: 18px 20px;
+    }
+}
