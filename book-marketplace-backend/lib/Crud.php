@@ -75,8 +75,9 @@ class Crud
         // 2. Partial matches for searchable columns
         foreach ($this->searchable as $col) {
             if (isset($queryParams[$col]) && $queryParams[$col] !== '') {
-                $where[] = "`{$col}` LIKE :{$col}_like";
-                $bindings["{$col}_like"] = '%' . $queryParams[$col] . '%';
+                $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $queryParams[$col]);
+                $where[] = "LOWER(`{$col}`) LIKE LOWER(:{$col}_like) ESCAPE '\\'";
+                $bindings["{$col}_like"] = '%' . $escaped . '%';
             }
         }
 
