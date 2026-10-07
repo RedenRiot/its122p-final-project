@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-public-page="true">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Courier+Prime:wght@400;700&display=swap">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+    <title>Submit a Report - Librowse</title>
+    <script src="session.js"></script>
+    <script src="consent.js"></script>
+</head>
+<body>
+<header>
+    <h1>Librowse Book Exchange</h1>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="browse.html">Browse Books</a>
+        <a href="list-book.html">List a Book</a>
+        <a href="customer-dashboard.html">Dashboard</a>
+        <a href="refund.html">Refunds</a>
+        <a href="report.html" class="active-nav" aria-current="page">Reports</a>
+    </nav>
+    <div id="auth-status" class="auth-status">
+        <a href="login.html">Sign in</a>
+        <a href="register.html">Create account</a>
+    </div>
+</header>
+<main>
+    <section id="report">
+        <img class="section-icon" src="assets/icon-report.svg" alt="" width="52" height="52">
+        <h2>Submit a Report</h2>
+        <p>Submit a report, form, or feedback to Staff and Administration.</p>
+        <p class="required-note"><span class="required-star">*</span> Required fields</p>
+        <form id="report-form" novalidate>
+            <!-- User ID hidden: filled automatically from session -->
+            <input type="hidden" id="submitted-by" name="submitted_by_id">
+
+            <label for="report-category">Report Category <span class="required-star">*</span></label>
+            <select id="report-category" name="report_category" required>
+                <option value="">Select Report Category</option>
+                <option value="Verification_Form">Verification Form</option>
+                <option value="Seller_Application">Seller Application</option>
+                <option value="User_Violation">User Violation</option>
+                <option value="Listing_Dispute">Listing Dispute</option>
+                <option value="General_Feedback">General Feedback</option>
+            </select>
+            <span class="field-error" id="err-report-category"></span>
+
+            <label for="related-entity">Related To <span class="required-star">*</span></label>
+            <select id="related-entity" name="related_entity_type" required>
+                <option value="">Select Type</option>
+                <option value="User">User</option>
+                <option value="Book_Listing">Book Listing</option>
+                <option value="Transaction">Transaction</option>
+                <option value="None">None</option>
+            </select>
+            <span class="field-error" id="err-related-entity"></span>
+
+            <label for="report-details">Report Details <span class="required-star">*</span></label>
+            <textarea id="report-details" name="form_data" rows="5" required placeholder="Please describe your report in detail…"></textarea>
+            <span class="field-error" id="err-report-details"></span>
+
+            <div class="form-button-row">
+                <button type="submit" id="report-submit">Submit Report</button>
+                <button type="button" id="report-clear" class="btn-clear">Clear</button>
+            </div>
+        </form>
+    </section>
+</main>
+<footer>
+    <p>Librowse Book Exchange</p>
+    <p>ITS122P Final Project</p>
+</footer>
+<script src="script.js"></script>
+<script>
+(function () {
+    function showError(el, msg) {
+        if (!el) return;
+        el.textContent = msg; el.style.display = 'block';
+        var prev = el.previousElementSibling;
+        if (prev && ['INPUT','SELECT','TEXTAREA'].includes(prev.tagName)) prev.classList.add('field-invalid');
+    }
+    function clearError(el) {
+        if (!el) return;
+        el.textContent = ''; el.style.display = 'none';
+        var prev = el.previousElementSibling;
+        if (prev) prev.classList.remove('field-invalid');
+    }
+    function clearFormErrors(form) {
+        if (!form) return;
+        form.querySelectorAll('.field-error').forEach(function (el) { el.textContent = ''; el.style.display = 'none'; });
+        form.querySelectorAll('.field-invalid').forEach(function (el) { el.classList.remove('field-invalid'); });
+    }
+    function setProcessing(btn, isProcessing, defaultLabel) {
+        if (!btn) return;
+        if (isProcessing) { btn.disabled = true; btn.dataset.originalText = btn.textContent; btn.textContent = 'Processing…'; }
+        else { btn.disabled = false; btn.textContent = btn.dataset.originalText || defaultLabel || 'Submit'; }
+    }
+    function validateRequired(id, errorId, label) {
+        var el = document.getElementById(id);
+        var errEl = document.getElementById('err-report-category'); // Fixed for this page context
+        if (!el || !errEl) return true;
+        if (!el.value.trim()) { showError(errEl, label + ' is required.'); return false; }
+        clearError(errEl); return true;
+    }
+    function attachClear(fieldId, errorId) {
+        var el = document.getElementById(fieldId);
+        var errEl = document.getElementById(errorId);
+        if (!el || !errEl) return;
+        ['input','change'].forEach(function (evt) { el.addEventListener(evt, function () { clearError(errEl); }); });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var reportForm = document.getElementById('report-form');
+        var reportSubmit = document.getElementById('report-submit');
+        var reportClear = document.getElementById('report-clear');
+
+        attachClear('report-category','err-report-category');
+        attachClear('related-entity','err-related-entity');
+        attachClear('report-details','err-report-details');
+
+        function validateReportForm() {
+            var ok = true;
+            if (!validateRequired('report-category','err-report-category','Report Category')) ok = false;
+            if (!validateRequired('related-entity','err-related-entity','Related To')) ok = false;
+            if (!validateRequired('report-details','err-report-details','Report Details')) ok = false;
+            return ok;
+        }
+
+        if (reportForm && reportSubmit) {
+            reportForm.addEventListener('submit', function (e) {
+                if (!validateReportForm()) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            }, true);
+        }
+
+        if (reportClear && reportForm) {
+            reportClear.addEventListener('click', function () {
+                reportForm.reset(); clearFormErrors(reportForm);
+                var sb = document.getElementById('submitted-by');
+                if (sb && window.currentUser) sb.value = window.currentUser.user_id;
+                if (reportSubmit) setProcessing(reportSubmit,false,'Submit Report');
+            });
+        }
+    });
+})();
+</script>
+</body>
+</html>

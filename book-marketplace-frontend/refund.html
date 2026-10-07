@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" data-public-page="true">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Courier+Prime:wght@400;700&display=swap">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+    <title>Request a Refund - Librowse</title>
+    <script src="session.js"></script>
+    <script src="consent.js"></script>
+</head>
+<body>
+<header>
+    <h1>Librowse Book Exchange</h1>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="browse.html">Browse Books</a>
+        <a href="list-book.html">List a Book</a>
+        <a href="customer-dashboard.html">Dashboard</a>
+        <a href="refund.html" class="active-nav" aria-current="page">Refunds</a>
+        <a href="report.html">Reports</a>
+    </nav>
+    <div id="auth-status" class="auth-status">
+        <a href="login.html">Sign in</a>
+        <a href="register.html">Create account</a>
+    </div>
+</header>
+<main>
+    <section id="refund">
+        <img class="section-icon" src="assets/icon-refund.svg" alt="" width="52" height="52">
+        <h2>Request a Refund</h2>
+        <p>Submit a refund request for an eligible transaction.</p>
+        <p class="required-note"><span class="required-star">*</span> Required fields</p>
+        <form id="refund-form" novalidate>
+            <!-- Customer ID hidden: filled automatically from session -->
+            <input type="hidden" id="customer-id" name="customer_id">
+
+            <label for="refund-transaction-id">Which purchase? <span class="required-star">*</span></label>
+            <select id="refund-transaction-id" name="transaction_id" required>
+                <option value="">Loading your completed purchases…</option>
+            </select>
+            <span class="input-helper-text" id="refund-tx-help">Refunds can be requested for completed purchases.</span>
+            <span class="field-error" id="err-refund-tx"></span>
+
+            <label for="refund-reason">Reason for Refund <span class="required-star">*</span></label>
+            <textarea id="refund-reason" name="reason" rows="5" required placeholder="Please describe the reason for your refund request…"></textarea>
+            <span class="field-error" id="err-refund-reason"></span>
+
+            <div class="form-button-row">
+                <button type="submit" id="refund-submit">Submit Refund Request</button>
+                <button type="button" id="refund-clear" class="btn-clear">Clear</button>
+            </div>
+        </form>
+    </section>
+</main>
+<footer>
+    <p>Librowse Book Exchange</p>
+    <p>ITS122P Final Project</p>
+</footer>
+<script src="script.js"></script>
+<script>
+(function () {
+    function showError(el, msg) {
+        if (!el) return;
+        el.textContent = msg; el.style.display = 'block';
+        var prev = el.previousElementSibling;
+        if (prev && ['INPUT','SELECT','TEXTAREA'].includes(prev.tagName)) prev.classList.add('field-invalid');
+    }
+    function clearError(el) {
+        if (!el) return;
+        el.textContent = ''; el.style.display = 'none';
+        var prev = el.previousElementSibling;
+        if (prev) prev.classList.remove('field-invalid');
+    }
+    function clearFormErrors(form) {
+        if (!form) return;
+        form.querySelectorAll('.field-error').forEach(function (el) { el.textContent = ''; el.style.display = 'none'; });
+        form.querySelectorAll('.field-invalid').forEach(function (el) { el.classList.remove('field-invalid'); });
+    }
+    function setProcessing(btn, isProcessing, defaultLabel) {
+        if (!btn) return;
+        if (isProcessing) { btn.disabled = true; btn.dataset.originalText = btn.textContent; btn.textContent = 'Processing…'; }
+        else { btn.disabled = false; btn.textContent = btn.dataset.originalText || defaultLabel || 'Submit'; }
+    }
+    function validateRequired(id, errorId, label) {
+        var el = document.getElementById(id);
+        var errEl = document.getElementById(errorId);
+        if (!el || !errEl) return true;
+        if (!el.value.trim()) { showError(errEl, label + ' is required.'); return false; }
+        clearError(errEl); return true;
+    }
+    function attachClear(fieldId, errorId) {
+        var el = document.getElementById(fieldId);
+        var errEl = document.getElementById(errorId);
+        if (!el || !errEl) return;
+        ['input','change'].forEach(function (evt) { el.addEventListener(evt, function () { clearError(errEl); }); });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var refundForm = document.getElementById('refund-form');
+        var refundSubmit = document.getElementById('refund-submit');
+        var refundClear = document.getElementById('refund-clear');
+
+        attachClear('refund-transaction-id','err-refund-tx');
+        attachClear('refund-reason','err-refund-reason');
+
+        function validateRefundForm() {
+            var ok = true;
+            var txEl = document.getElementById('refund-transaction-id');
+            var txErr = document.getElementById('err-refund-tx');
+            if (txEl) {
+                if (!txEl.value.trim()) { showError(txErr,'Please choose the purchase you want refunded.'); ok = false; }
+                else if (isNaN(parseInt(txEl.value,10)) || parseInt(txEl.value,10) <= 0) { showError(txErr,'Please choose the purchase you want refunded.'); ok = false; }
+                else clearError(txErr);
+            }
+            if (!validateRequired('refund-reason','err-refund-reason','Reason for Refund')) ok = false;
+            else if (document.getElementById('refund-reason').value.trim().length < 10) { showError(document.getElementById('err-refund-reason'),'Please describe the problem in at least 10 characters.'); ok = false; }
+            return ok;
+        }
+
+        if (refundForm && refundSubmit) {
+            refundForm.addEventListener('submit', function (e) {
+                if (!validateRefundForm()) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+            }, true);
+        }
+
+        if (refundClear && refundForm) {
+            refundClear.addEventListener('click', function () {
+                refundForm.reset(); clearFormErrors(refundForm);
+                var cid = document.getElementById('customer-id');
+                if (cid && window.currentUser) cid.value = window.currentUser.user_id;
+                if (refundSubmit) setProcessing(refundSubmit,false,'Submit Refund Request');
+            });
+        }
+    });
+})();
+</script>
+</body>
+</html>

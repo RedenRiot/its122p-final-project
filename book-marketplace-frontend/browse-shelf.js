@@ -35,6 +35,7 @@
     const selected = new Set();      // inventory_ids picked in that mode
     const typeSelect = document.getElementById("filter-type");
 
+
     /* Sold, traded and on-hold books are taken off the shelves automatically.
        Sellers still see their own via "Only my listings". */
     function isAvailable(l) { return String(l.status || "Available").toLowerCase() === "available"; }
@@ -82,9 +83,17 @@
         let list = listings.slice();
         if (mineEl && mineEl.checked) list = list.filter(l => isMine(l) && groupOf(l) === mineGroup);
         else list = list.filter(isAvailable);
-        if (typeFilter === "sale") list = list.filter(forSale);
-        if (typeFilter === "trade") list = list.filter(forTrade);
+
+        const typeVal = typeSelect ? typeSelect.value : "";
+        if (typeVal === "For_sale") list = list.filter(forSale);
+        if (typeVal === "For_trade") list = list.filter(forTrade);
+        if (typeVal === "Both") {
+            // Keep both sale and trade (exclude any that are neither, if applicable)
+            list = list.filter(l => forSale(l) || forTrade(l));
+        }
+
         const by = sortEl ? sortEl.value : "newest";
+
         const title = l => (bookOf(l)?.title || "").toLowerCase();
         const price = l => (l.price === null || l.price === "" || l.price === undefined) ? Infinity : Number(l.price);
         if (by === "title") list.sort((a, b) => title(a).localeCompare(title(b)));
@@ -174,13 +183,11 @@
     }
 
     function clearFilters() {
-        ["search-book"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
-        ["filter-type", "filter-condition"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+        ["search-book", "filter-type", "filter-condition"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
         document.querySelectorAll("#filter-category-options input[type=checkbox]").forEach(cb => { cb.checked = false; });
         if (mineEl) mineEl.checked = false;
         if (selectMode) setSelectMode(false, false);
         syncMineTabs();
-        setTypeFilter("all", false);
         filterBooks();
     }
     window.clearFilters = clearFilters;
@@ -197,23 +204,11 @@
     // so reassigning the global makes script.js call the wrapped version.
     try { renderBooks = window.renderBooks; } catch (_) {}
 
-    function setTypeFilter(value, rerender = true) {
-        typeFilter = value;
-        document.querySelectorAll(".type-chip").forEach(chip => {
-            const on = chip.dataset.type === value;
-            chip.classList.toggle("active", on);
-            chip.setAttribute("aria-pressed", String(on));
-        });
-        // The chips replace the "Listing type" dropdown, so keep that at "All"
-        if (typeSelect && value !== "all") typeSelect.value = "";
-        if (rerender) filterBooks();
-    }
-    document.querySelectorAll(".type-chip").forEach(chip =>
-        chip.addEventListener("click", () => setTypeFilter(chip.dataset.type)));
-    typeSelect?.addEventListener("change", () => { if (typeSelect.value) setTypeFilter("all", false); });
+    typeSelect?.addEventListener("change", () => filterBooks());
 
     sortEl?.addEventListener("change", () => filterBooks());
     function syncMineTabs() {
+
         if (mineTabs) mineTabs.hidden = !(mineEl && mineEl.checked);
     }
     function setMineGroup(group, rerender = true) {
