@@ -649,24 +649,55 @@
 }
 
 .card-btn {
+    position: relative;
     display: block;
     margin-top: 10px;
     text-align: center;
     padding: 8px 14px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
     color: var(--spine-dark);
     background: var(--paper);
-    border: 1px solid var(--rule-strong);
+    border: 2px solid var(--rule-strong);
     border-radius: var(--r-md);
     text-decoration: none;
-    transition: background .15s, border-color .15s, color .15s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    transition: 0.3s ease all;
+    z-index: 1;
 }
 
-.card-btn:hover {
-    background: var(--spine);
+.card-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    right: 50%;
+    bottom: 0;
+    opacity: 0;
+    background-color: var(--spine);
+    z-index: -1;
+    transition: 0.4s ease all;
+}
+
+.card-btn:hover,
+.card-btn:focus-visible {
     color: #fff;
     border-color: var(--spine);
+    box-shadow: 0 4px 14px rgba(78, 59, 48, 0.18);
+}
+
+.card-btn:hover::before,
+.card-btn:focus-visible::before {
+    left: 0;
+    right: 0;
+    opacity: 1;
+}
+
+.card-btn:active {
+    transform: scale(0.95);
 }
 
 .showcase-footer {

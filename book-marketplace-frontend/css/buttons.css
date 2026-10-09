@@ -1,189 +1,186 @@
 /* =========================================================================
    BUTTON STYLES
+   Expanding center hover animation (adapted from Uiverse.io by adamgiebl)
+   Cohesive with Librowse cozy library aesthetic and color system
    ========================================================================= */
 
-button {
+:root {
+    --btn-accent: var(--spine);
+    --btn-accent-hover: var(--spine-dark);
+    --btn-color: var(--spine-dark);
+    --btn-fill: var(--spine);
+    --btn-bg: var(--surface);
+}
+
+/* Base button selector excluding special inline links, tabs, and shelf items */
+button:not(.text-link):not(.lock-retry-link):not(.toggle-password-btn):not(.shelf-book):not(.demo-pill):not(.mine-tab):not(.bulk-link):not(.auth-tab-btn) {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 11px 20px;
     font: inherit;
-    font-size: 15px;
-    font-weight: 600;
-    color: #fff;
-    background: var(--spine);
-    border: 1px solid transparent;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-align: center;
+    text-decoration: none;
+    padding: 0.65em 1.8em;
+    border: 2px solid var(--btn-accent, var(--spine));
     border-radius: var(--r-md);
+    color: var(--btn-color, var(--spine-dark));
+    background: var(--btn-bg, var(--surface));
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08), 0 3px 6px rgba(0, 0, 0, 0.05);
     cursor: pointer;
-    transition: background .15s, border-color .15s, color .15s;
+    overflow: hidden;
+    transition: 0.3s ease all;
+    z-index: 1;
 }
 
-button:hover {
-    background: var(--spine-dark);
+/* Ensure child text and icons stay visible above expanding fill */
+button:not(.text-link):not(.lock-retry-link):not(.toggle-password-btn):not(.shelf-book):not(.demo-pill):not(.mine-tab):not(.bulk-link):not(.auth-tab-btn) > * {
+    position: relative;
+    z-index: 1;
 }
 
+/* Expanding pseudo-element from center */
+button:not(.text-link):not(.lock-retry-link):not(.toggle-password-btn):not(.shelf-book):not(.demo-pill):not(.mine-tab):not(.bulk-link):not(.auth-tab-btn)::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    right: 50%;
+    bottom: 0;
+    opacity: 0;
+    background-color: var(--btn-fill, var(--spine));
+    z-index: -1;
+    transition: 0.4s ease all;
+}
+
+/* Hover and focus states */
+button:not(.text-link):not(.lock-retry-link):not(.toggle-password-btn):not(.shelf-book):not(.demo-pill):not(.mine-tab):not(.bulk-link):not(.auth-tab-btn):hover,
+button:not(.text-link):not(.lock-retry-link):not(.toggle-password-btn):not(.shelf-book):not(.demo-pill):not(.mine-tab):not(.bulk-link):not(.auth-tab-btn):focus-visible {
+    color: #fff;
+    border-color: var(--btn-accent-hover, var(--btn-fill, var(--spine-dark)));
+    box-shadow: 0 4px 14px rgba(78, 59, 48, 0.2), 0 2px 6px rgba(78, 59, 48, 0.12);
+}
+
+button:not(.text-link):not(.lock-retry-link):not(.toggle-password-btn):not(.shelf-book):not(.demo-pill):not(.mine-tab):not(.bulk-link):not(.auth-tab-btn):hover::before,
+button:not(.text-link):not(.lock-retry-link):not(.toggle-password-btn):not(.shelf-book):not(.demo-pill):not(.mine-tab):not(.bulk-link):not(.auth-tab-btn):focus-visible::before {
+    left: 0;
+    right: 0;
+    opacity: 1;
+}
+
+/* Tactile press active state */
+button:not(.text-link):not(.lock-retry-link):not(.toggle-password-btn):not(.shelf-book):not(.demo-pill):not(.mine-tab):not(.bulk-link):not(.auth-tab-btn):active {
+    transform: scale(0.95);
+}
+
+/* Disabled state */
 button:disabled,
-button[disabled] {
-    background: #cdb9a3;
-    cursor: not-allowed;
+button[disabled],
+button.btn-locked {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    border-color: var(--rule-strong) !important;
+    color: var(--muted) !important;
+    background: var(--paper) !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+button:disabled::before,
+button[disabled]::before,
+button.btn-locked::before {
+    display: none !important;
 }
 
 .form-button-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
     margin-top: 26px;
 }
 
+/* =========================================================================
+   BUTTON COLOR VARIANTS
+   ========================================================================= */
+
+/* Primary / submit variant */
+button.btn-primary,
+button[type="submit"] {
+    --btn-accent: var(--spine);
+    --btn-accent-hover: var(--spine-dark);
+    --btn-color: var(--spine-dark);
+    --btn-fill: var(--spine);
+    --btn-bg: var(--surface);
+}
+
+/* Secondary / clear variant */
 button.btn-clear {
-    background: transparent;
-    color: var(--ink);
-    border-color: var(--rule-strong);
+    --btn-accent: var(--rule-strong);
+    --btn-accent-hover: var(--ink);
+    --btn-color: var(--ink);
+    --btn-fill: var(--ink);
+    --btn-bg: transparent;
 }
 
-button.btn-clear:hover {
-    background: var(--paper);
-    border-color: var(--ink);
-}
-
-/* Buttons inside table rows (Buy / Trade / Cancel) */
-td button {
-    padding: 6px 12px;
-    font-size: 13px;
-    margin: 2px 4px 2px 0;
-}
-
-.transaction-action button {
-    background: transparent;
-    color: var(--stamp);
-    border-color: currentColor;
-}
-
-.transaction-action button:hover {
-    background: var(--stamp-tint);
-}
-
-/* =========================================================================
-   COZY THEME BUTTON STYLES
-   ========================================================================= */
-
-button {
-    border-radius: 999px;
-    padding: 11px 22px;
-}
-
-td button {
-    border-radius: 999px;
-}
-
-/* =========================================================================
-   SMALL BUTTON VARIANT
-   ========================================================================= */
-
-.small-btn {
-    padding: 7px 14px;
-    font-size: 13px;
-}
-
-button.inline-retry,
-button.btn-small {
-    margin: 0 0 0 8px;
-    padding: 6px 14px;
-    font-size: 13px;
-}
-
-button.btn-small {
-    margin-left: 0;
-}
-
-button:disabled {
-    opacity: .65;
-    cursor: progress;
-}
-
-/* =========================================================================
-   DANGER BUTTONS
-   ========================================================================= */
-
+/* Danger variant */
 button.btn-danger {
-    color: var(--stamp);
-    background: transparent;
-    border-color: #e5bdb6;
-}
-
-button.btn-danger:hover {
-    background: var(--stamp-tint);
-    border-color: var(--stamp);
+    --btn-accent: #e5bdb6;
+    --btn-accent-hover: var(--stamp);
+    --btn-color: var(--stamp);
+    --btn-fill: var(--stamp);
+    --btn-bg: transparent;
 }
 
 button.btn-danger-solid {
-    background: var(--stamp);
+    --btn-accent: var(--stamp);
+    --btn-accent-hover: #9a4f45;
+    --btn-color: #fff;
+    --btn-fill: #9a4f45;
+    --btn-bg: var(--stamp);
 }
-
-button.btn-danger-solid:hover {
-    background: #9a4f45;
-}
-
-/* =========================================================================
-   TEXT LINK BUTTON
-   ========================================================================= */
-
-button.text-link {
-    display: inline;
-    padding: 0;
-    margin: 0;
-    font: inherit;
-    font-weight: 700;
-    color: var(--spine-dark);
-    background: none;
-    border: none;
-    border-radius: 0;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    cursor: pointer;
-}
-
-button.text-link:hover {
-    background: none;
-    color: var(--ink);
-}
-
-/* =========================================================================
-   LOCK REQUEST BUTTON
-   ========================================================================= */
 
 .lock-request-btn {
-    padding: 8px 16px;
-    font-size: 14px;
-    background: var(--stamp);
+    --btn-accent: var(--stamp);
+    --btn-accent-hover: #9a4f45;
+    --btn-color: var(--stamp);
+    --btn-fill: var(--stamp);
+    --btn-bg: transparent;
 }
 
-.lock-request-btn:hover {
-    background: #9a4f45;
+.transaction-action button {
+    --btn-accent: var(--stamp);
+    --btn-accent-hover: var(--stamp);
+    --btn-color: var(--stamp);
+    --btn-fill: var(--stamp);
+    --btn-bg: transparent;
 }
 
 /* =========================================================================
-   LOCK RETRY LINK
+   COMPACT & TABLE BUTTONS
    ========================================================================= */
 
-.lock-retry-link {
-    display: inline;
-    margin-top: 10px;
-    padding: 0;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--stamp);
-    background: none;
-    border: none;
-    border-radius: 0;
-    text-decoration: underline;
-    cursor: pointer;
+td button,
+.small-btn,
+button.btn-small,
+button.inline-retry {
+    padding: 0.38em 0.85em;
+    font-size: 11px;
+    letter-spacing: 1px;
+    border-width: 1.5px;
+    border-radius: 6px;
 }
 
-.lock-retry-link:hover {
-    background: none;
-    color: var(--ink);
+td button {
+    margin: 2px 4px 2px 0;
+}
+
+button.inline-retry {
+    margin: 0 0 0 8px;
 }
 
 /* =========================================================================
@@ -191,16 +188,13 @@ button.text-link:hover {
    ========================================================================= */
 
 .manage-btn {
-    padding: 8px 16px;
-    font-size: 14px;
-    color: var(--ink);
-    background: var(--surface);
-    border-color: var(--rule-strong);
-}
-
-.manage-btn:hover {
-    background: var(--paper);
-    border-color: var(--spine);
+    --btn-accent: var(--rule-strong);
+    --btn-accent-hover: var(--spine);
+    --btn-color: var(--ink);
+    --btn-fill: var(--spine);
+    --btn-bg: var(--surface);
+    padding: 0.55em 1.2em;
+    font-size: 13px;
 }
 
 .manage-btn.active {
@@ -210,11 +204,69 @@ button.text-link:hover {
 }
 
 /* =========================================================================
-   RESPONSIVE
+   SPECIAL INLINE LINK BUTTONS (Exempt from box model & animations)
+   ========================================================================= */
+
+button.text-link {
+    display: inline;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    font-size: inherit;
+    font-weight: 700;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--spine-dark);
+    background: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+button.text-link:hover,
+button.text-link:focus-visible {
+    background: none;
+    color: var(--ink);
+    box-shadow: none;
+}
+
+.lock-retry-link {
+    display: inline;
+    margin-top: 10px;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--stamp);
+    background: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.lock-retry-link:hover,
+.lock-retry-link:focus-visible {
+    background: none;
+    color: var(--ink);
+    box-shadow: none;
+}
+
+/* =========================================================================
+   RESPONSIVE & ACCESSIBILITY
    ========================================================================= */
 
 @media (prefers-reduced-motion: reduce) {
-    * {
+    button,
+    button::before {
         transition: none !important;
+        transform: none !important;
     }
 }

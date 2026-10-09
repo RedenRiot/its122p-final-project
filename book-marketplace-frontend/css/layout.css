@@ -21,9 +21,12 @@ main>* {
 section {
     background: var(--surface);
     border: 1px solid var(--rule);
+    border-top: 3px solid var(--rule-strong);
     border-radius: var(--r-lg);
     padding: 28px 32px;
     overflow-x: auto;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 4px 16px -4px rgba(78, 59, 48, .07), 0 12px 32px -12px rgba(110, 80, 55, .2);
+    transition: box-shadow 0.2s ease;
 }
 
 section h2 {
@@ -47,12 +50,6 @@ section>p {
     margin: 0 0 18px;
     max-width: 68ch;
     color: var(--muted);
-}
-
-/* COZY THEME */
-section {
-    border-color: var(--rule);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 10px 30px -18px rgba(110, 80, 55, .35);
 }
 
 section h2,

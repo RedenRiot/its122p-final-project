@@ -30,6 +30,13 @@
     border: 1px solid var(--rule);
     border-left: 4px solid var(--ink);
     border-radius: var(--r-md);
+    box-shadow: 0 2px 8px -2px rgba(78, 59, 48, 0.06), 0 6px 16px -4px rgba(110, 80, 55, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px -2px rgba(78, 59, 48, 0.1), 0 10px 24px -4px rgba(110, 80, 55, 0.12);
 }
 
 .dashboard-card-green {

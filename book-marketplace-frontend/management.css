@@ -135,16 +135,47 @@ body.management-body {
 }
 .management-sidebar-bottom a:hover { background: rgba(255,255,255,.06); color: #fff; }
 .management-sidebar-bottom button {
-    padding: 10px 12px;
+    position: relative;
+    padding: 10px 14px;
     font: inherit;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
     color: #fff;
     background: transparent;
-    border: 1px solid rgba(255,255,255,.25);
+    border: 2px solid rgba(255, 255, 255, 0.28);
     border-radius: var(--r-md);
     cursor: pointer;
+    overflow: hidden;
+    transition: 0.3s ease all;
+    z-index: 1;
 }
-.management-sidebar-bottom button:hover { background: rgba(255,255,255,.08); }
+.management-sidebar-bottom button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    right: 50%;
+    bottom: 0;
+    opacity: 0;
+    background-color: rgba(255, 255, 255, 0.16);
+    z-index: -1;
+    transition: 0.4s ease all;
+}
+.management-sidebar-bottom button:hover,
+.management-sidebar-bottom button:focus-visible {
+    border-color: rgba(255, 255, 255, 0.6);
+}
+.management-sidebar-bottom button:hover::before,
+.management-sidebar-bottom button:focus-visible::before {
+    left: 0;
+    right: 0;
+    opacity: 1;
+}
+.management-sidebar-bottom button:active {
+    transform: scale(0.95);
+}
 
 /* ---------------- Main ---------------- */
 .management-main {
@@ -187,11 +218,17 @@ body.management-body {
 .management-grid.cards-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 .management-card {
-    padding: 18px 20px;
+    padding: 20px 22px;
     background: var(--surface);
     border: 1px solid var(--rule);
     border-top: 3px solid var(--spine);
     border-radius: var(--r-md);
+    box-shadow: 0 2px 10px -2px rgba(78, 59, 48, 0.06), 0 6px 18px -4px rgba(110, 80, 55, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.management-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px -2px rgba(78, 59, 48, 0.1), 0 12px 28px -4px rgba(110, 80, 55, 0.14);
 }
 .management-stat-label { font-size: 13px; font-weight: 600; color: var(--muted); }
 .management-stat-value {
@@ -204,11 +241,14 @@ body.management-body {
 }
 
 .management-panel {
-    margin-bottom: 20px;
-    padding: 24px 26px;
+    margin-bottom: 22px;
+    padding: 26px 28px;
     background: var(--surface);
     border: 1px solid var(--rule);
+    border-top: 3px solid var(--rule-strong);
     border-radius: var(--r-lg);
+    box-shadow: 0 2px 12px -3px rgba(78, 59, 48, 0.06), 0 8px 24px -6px rgba(110, 80, 55, 0.1);
+    transition: box-shadow 0.2s ease;
 }
 .management-panel h3 {
     margin: 0 0 6px;
@@ -293,31 +333,108 @@ body.management-body {
 
 /* ---------------- Buttons ---------------- */
 .management-btn {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 9px 16px;
+    gap: 6px;
+    padding: 0.55em 1.3em;
     font: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--ink);
-    background: var(--surface);
-    border: 1px solid var(--rule-strong);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    text-align: center;
+    color: var(--btn-color, var(--ink));
+    background: var(--btn-bg, var(--surface));
+    border: 2px solid var(--btn-accent, var(--rule-strong));
     border-radius: var(--r-md);
     cursor: pointer;
     white-space: nowrap;
-    transition: background .15s, border-color .15s;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: 0.3s ease all;
+    z-index: 1;
 }
-.management-btn:hover { background: var(--paper); border-color: var(--ink); }
-.management-btn:disabled { opacity: .55; cursor: not-allowed; }
 
-.management-btn.primary { color: #fff; background: var(--spine); border-color: var(--spine); }
-.management-btn.primary:hover { background: var(--spine-dark); border-color: var(--spine-dark); }
-.management-btn.success { color: #fff; background: var(--ok); border-color: var(--ok); }
-.management-btn.warning { color: var(--warn); background: var(--warn-tint); border-color: #ead3a6; }
-.management-btn.danger  { color: var(--stamp); background: var(--surface); border-color: #e5bdb6; }
-.management-btn.danger:hover { background: var(--stamp-tint); border-color: var(--stamp); }
-.management-btn.small { padding: 5px 10px; font-size: 12px; }
+.management-btn > * {
+    position: relative;
+    z-index: 1;
+}
+
+.management-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    right: 50%;
+    bottom: 0;
+    opacity: 0;
+    background-color: var(--btn-fill, var(--ink));
+    z-index: -1;
+    transition: 0.4s ease all;
+}
+
+.management-btn:hover,
+.management-btn:focus-visible {
+    color: #fff;
+    border-color: var(--btn-fill, var(--ink));
+    box-shadow: 0 4px 14px rgba(78, 59, 48, 0.18), 0 2px 5px rgba(78, 59, 48, 0.1);
+}
+
+.management-btn:hover::before,
+.management-btn:focus-visible::before {
+    left: 0;
+    right: 0;
+    opacity: 1;
+}
+
+.management-btn:active {
+    transform: scale(0.95);
+}
+
+.management-btn:disabled {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.management-btn:disabled::before {
+    display: none !important;
+}
+
+.management-btn.primary {
+    --btn-accent: var(--spine);
+    --btn-color: var(--spine-dark);
+    --btn-fill: var(--spine);
+}
+
+.management-btn.success {
+    --btn-accent: var(--ok);
+    --btn-color: var(--ok);
+    --btn-fill: var(--ok);
+}
+
+.management-btn.warning {
+    --btn-accent: var(--warn);
+    --btn-color: var(--warn);
+    --btn-fill: var(--warn);
+}
+
+.management-btn.danger {
+    --btn-accent: var(--stamp);
+    --btn-color: var(--stamp);
+    --btn-fill: var(--stamp);
+}
+
+.management-btn.small {
+    padding: 0.38em 0.85em;
+    font-size: 11px;
+    letter-spacing: 0.8px;
+    border-width: 1.5px;
+    border-radius: 6px;
+}
 
 /* ---------------- Tables ---------------- */
 .management-table-wrap {
