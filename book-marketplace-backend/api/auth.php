@@ -4,6 +4,9 @@ require_once __DIR__ . '/../lib/bootstrap.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
+/**
+ * Parse and validate incoming JSON request body.
+ */
 function auth_body(): array
 {
     $raw = file_get_contents('php://input');
