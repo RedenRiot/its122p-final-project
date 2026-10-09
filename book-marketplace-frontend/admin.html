@@ -183,6 +183,24 @@
                         <input id="listings-search" type="search" placeholder="Book title, seller, condition, type, or status">
                     </div>
                     <div class="management-field">
+                        <label for="listings-filter-type">Type</label>
+                        <select id="listings-filter-type">
+                            <option value="">All Types</option>
+                            <option value="Both">Both</option>
+                            <option value="For_sale">For Sale</option>
+                            <option value="For_trade">For Trade</option>
+                        </select>
+                    </div>
+                    <div class="management-field">
+                        <label for="listings-filter-condition">Condition</label>
+                        <select id="listings-filter-condition">
+                            <option value="">All Conditions</option>
+                            <option value="New">New</option>
+                            <option value="Good">Good</option>
+                            <option value="Acceptable">Acceptable</option>
+                        </select>
+                    </div>
+                    <div class="management-field">
                         <label for="listings-sort">Sort listings</label>
                         <select id="listings-sort">
                             <option value="newest">Newest first</option>
@@ -289,6 +307,25 @@
                         <input id="transactions-search" type="search" placeholder="Buyer, book title, type, status, or staff">
                     </div>
                     <div class="management-field">
+                        <label for="transactions-filter-type">Type</label>
+                        <select id="transactions-filter-type">
+                            <option value="">All Types</option>
+                            <option value="Purchase">Purchase</option>
+                            <option value="Trade">Trade</option>
+                        </select>
+                    </div>
+                    <div class="management-field">
+                        <label for="transactions-filter-status">Current Status</label>
+                        <select id="transactions-filter-status">
+                            <option value="">All Statuses</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Accepted">Accepted</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                            <option value="Disputed">Disputed</option>
+                        </select>
+                    </div>
+                    <div class="management-field">
                         <label for="transactions-sort">Sort transactions</label>
                         <select id="transactions-sort">
                             <option value="newest">Newest first</option>
@@ -390,6 +427,17 @@
                     <div class="management-field grow">
                         <label for="activity-logs-search">Search activity logs</label>
                         <input id="activity-logs-search" type="search" placeholder="Actor, action, outcome, reason, or target">
+                    </div>
+                    <div class="management-field">
+                        <label for="activity-logs-filter-type">Activity Type</label>
+                        <select id="activity-logs-filter-type">
+                            <option value="">All Types</option>
+                            <option value="Visit">Visit</option>
+                            <option value="Auth">Auth</option>
+                            <option value="Account">Account</option>
+                            <option value="Transaction">Transaction</option>
+                            <option value="Consent">Consent</option>
+                        </select>
                     </div>
                     <div class="management-field">
                         <label for="activity-logs-sort">Sort activity logs</label>

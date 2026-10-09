@@ -395,6 +395,30 @@ body.management-body {
     color: var(--muted);
 }
 
+.management-log-details {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink);
+    max-width: 440px;
+}
+.management-log-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    white-space: normal;
+}
+.management-log-item strong {
+    font-weight: 600;
+    color: var(--ink);
+}
+.management-log-item span {
+    color: #4a4036;
+}
+
 /* ---------------- Responsive ---------------- */
 @media (max-width: 1100px) {
     .management-grid.cards-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

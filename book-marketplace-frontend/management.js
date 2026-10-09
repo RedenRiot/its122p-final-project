@@ -832,8 +832,16 @@ function renderListingsTable() {
 
     const search = (document.getElementById("listings-search")?.value || "").toLowerCase().trim();
     const sort = document.getElementById("listings-sort")?.value || "newest";
+    const typeFilter = document.getElementById("listings-filter-type")?.value || "";
+    const conditionFilter = document.getElementById("listings-filter-condition")?.value || "";
 
     let listings = (managementState.listings || []).filter(l => {
+        if (typeFilter && String(l.listing_type || "").toLowerCase() !== typeFilter.toLowerCase()) {
+            return false;
+        }
+        if (conditionFilter && String(l.condition || "").toLowerCase() !== conditionFilter.toLowerCase()) {
+            return false;
+        }
         if (!search) return true;
         const bookTitle = bm[l.book_id]?.title || "";
         const seller = um[l.seller_id]?.username || "";
@@ -999,8 +1007,16 @@ function renderTransactionsTable() {
 
     const search = (document.getElementById("transactions-search")?.value || "").toLowerCase().trim();
     const sort = document.getElementById("transactions-sort")?.value || "newest";
+    const typeFilter = document.getElementById("transactions-filter-type")?.value || "";
+    const statusFilter = document.getElementById("transactions-filter-status")?.value || "";
 
     let transactions = (managementState.transactions || []).filter(t => {
+        if (typeFilter && String(t.transaction_type || "").toLowerCase() !== typeFilter.toLowerCase()) {
+            return false;
+        }
+        if (statusFilter && String(t.status || "").toLowerCase() !== statusFilter.toLowerCase()) {
+            return false;
+        }
         if (!search) return true;
         const buyer = um[t.buyer_id]?.username || "";
         const staff = um[t.managed_by_staff_id]?.username || "";
@@ -1121,6 +1137,105 @@ async function saveRefund(refundId) {
     }
 }
 
+function formatRecordDetails(r) {
+    let details = r?.details;
+    if (typeof details === "string") {
+        try { details = JSON.parse(details); } catch (_) {}
+    }
+    if (!details || typeof details !== "object" || Object.keys(details).length === 0) {
+        return '<span class="muted">No details</span>';
+    }
+    const items = Object.entries(details).map(([k, v]) => {
+        let label = k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        if (k.toLowerCase().endsWith("_id")) label = k.slice(0, -3).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) + " #";
+        let valStr = String(v);
+        if (k.toLowerCase() === "amount") valStr = formatMoney(v);
+        return `<span class="management-log-item"><strong>${mgEscape(label)}:</strong> <span>${mgEscape(valStr)}</span></span>`;
+    });
+    return `<div class="management-log-details">${items.join("")}</div>`;
+}
+
+function formatActivityDetails(log) {
+    if (!log) return '<span class="muted">None</span>';
+    let details = log.details;
+    if (typeof details === "string") {
+        const trimmed = details.trim();
+        if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+            try {
+                details = JSON.parse(trimmed);
+            } catch (_) {
+                details = trimmed;
+            }
+        } else {
+            details = trimmed;
+        }
+    }
+
+    if (!details || (typeof details === "object" && Object.keys(details).length === 0)) {
+        return '<span class="muted">No additional details</span>';
+    }
+
+    if (typeof details !== "object") {
+        return `<span>${mgEscape(String(details))}</span>`;
+    }
+
+    const items = Object.entries(details).map(([k, v]) => {
+        if (v === null || v === undefined || v === "") return "";
+        let label = k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        if (k.toLowerCase() === "id") label = "ID";
+        if (k.toLowerCase().endsWith("_id")) {
+            label = k.slice(0, -3).replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) + " #";
+        }
+
+        let valStr = "";
+        if (typeof v === "boolean") {
+            valStr = v ? "Yes" : "No";
+        } else if (k.toLowerCase() === "amount") {
+            valStr = formatMoney(v);
+        } else if (k.toLowerCase() === "policy" && String(v) === "privacy-cookie") {
+            valStr = "Privacy & Cookie Policy";
+        } else if (typeof v === "object") {
+            if (Array.isArray(v)) {
+                valStr = v.map(x => String(x)).join(", ");
+            } else {
+                valStr = Object.entries(v).map(([subK, subV]) => `${subK}: ${subV}`).join(", ");
+            }
+        } else {
+            valStr = String(v);
+            if (valStr.includes("_")) {
+                valStr = valStr.replace(/_/g, " ");
+            }
+            if (/^[a-z0-9\s-]+$/.test(valStr)) {
+                valStr = valStr.replace(/\b\w/g, c => c.toUpperCase());
+            }
+        }
+
+        return `<span class="management-log-item"><strong>${mgEscape(label)}:</strong> <span>${mgEscape(valStr)}</span></span>`;
+    }).filter(Boolean);
+
+    if (items.length === 0) {
+        return '<span class="muted">No additional details</span>';
+    }
+
+    return `<div class="management-log-details">${items.join("")}</div>`;
+}
+
+function formatActivityTarget(log) {
+    if (!log) return "-";
+    const type = log.target_type;
+    const id = log.target_id;
+    const page = log.page_path;
+    if (type && id) {
+        return `${type} #${id}`;
+    }
+    if (type && page) {
+        return `${type}: ${page}`;
+    }
+    if (type) return type;
+    if (page) return page;
+    return "-";
+}
+
 function renderRecordsTable() {
     const tbody = document.getElementById("records-body");
     if (!tbody) return;
@@ -1148,7 +1263,7 @@ function renderRecordsTable() {
             <td>${r.record_id}</td>
             <td>${mgEscape(um[r.admin_id]?.username || `User #${r.admin_id}`)}</td>
             <td>${mgEscape(r.record_type.replaceAll("_"," "))}</td>
-            <td class="management-code">${mgEscape(typeof r.details === "string" ? r.details : JSON.stringify(r.details || {}))}</td>
+            <td>${formatRecordDetails(r)}</td>
             <td>${formatDate(r.created_at)}</td>
             <td><button class="management-btn danger small" onclick="deleteRecord(${r.record_id})" title="Soft-delete: hides from view but keeps the audit record">Archive</button></td>
         </tr>
@@ -1162,8 +1277,12 @@ function renderActivityLogsTable() {
 
     const search = (document.getElementById("activity-logs-search")?.value || "").toLowerCase().trim();
     const sort = document.getElementById("activity-logs-sort")?.value || "newest";
+    const typeFilter = document.getElementById("activity-logs-filter-type")?.value || "";
 
     let logs = (managementState.activityLogs || []).filter(log => {
+        if (typeFilter && String(log.activity_type || "").toLowerCase() !== typeFilter.toLowerCase()) {
+            return false;
+        }
         if (!search) return true;
         const actor = um[log.actor_user_id]?.username || (log.visitor_key ? `Visitor ${log.visitor_key}` : "");
         const detailsStr = typeof log.details === "string" ? log.details : JSON.stringify(log.details || {});
@@ -1178,8 +1297,8 @@ function renderActivityLogsTable() {
     }
 
     tbody.innerHTML = logs.map(log => {
-        const details = typeof log.details === "string" ? log.details : JSON.stringify(log.details || {});
-        const target = [log.target_type, log.target_id].filter(Boolean).join(" #") || (log.page_path || "-");
+        const target = formatActivityTarget(log);
+        const detailsHtml = formatActivityDetails(log);
         return `
             <tr>
                 <td>${log.activity_id}</td>
@@ -1189,7 +1308,7 @@ function renderActivityLogsTable() {
                 <td>${badge(log.outcome)}</td>
                 <td>${mgEscape(log.reason || "-")}</td>
                 <td>${mgEscape(target)}</td>
-                <td class="management-code">${mgEscape(details)}</td>
+                <td>${detailsHtml}</td>
                 <td>${formatDate(log.created_at)}</td>
             </tr>
         `;
@@ -1341,17 +1460,22 @@ async function initManagementPage() {
     document.getElementById("categories-sort")?.addEventListener("change", renderCategoriesTable);
     document.getElementById("listings-search")?.addEventListener("input", renderListingsTable);
     document.getElementById("listings-sort")?.addEventListener("change", renderListingsTable);
+    document.getElementById("listings-filter-type")?.addEventListener("change", renderListingsTable);
+    document.getElementById("listings-filter-condition")?.addEventListener("change", renderListingsTable);
     document.getElementById("reports-search")?.addEventListener("input", renderReportsTable);
     document.getElementById("reports-sort")?.addEventListener("change", renderReportsTable);
     document.getElementById("reports-forms-only")?.addEventListener("change", renderReportsTable);
     document.getElementById("transactions-search")?.addEventListener("input", renderTransactionsTable);
     document.getElementById("transactions-sort")?.addEventListener("change", renderTransactionsTable);
+    document.getElementById("transactions-filter-type")?.addEventListener("change", renderTransactionsTable);
+    document.getElementById("transactions-filter-status")?.addEventListener("change", renderTransactionsTable);
     document.getElementById("refunds-search")?.addEventListener("input", renderRefundsTable);
     document.getElementById("refunds-sort")?.addEventListener("change", renderRefundsTable);
     document.getElementById("records-search")?.addEventListener("input", renderRecordsTable);
     document.getElementById("records-sort")?.addEventListener("change", renderRecordsTable);
     document.getElementById("activity-logs-search")?.addEventListener("input", renderActivityLogsTable);
     document.getElementById("activity-logs-sort")?.addEventListener("change", renderActivityLogsTable);
+    document.getElementById("activity-logs-filter-type")?.addEventListener("change", renderActivityLogsTable);
 
     document.getElementById("book-form")?.addEventListener("submit", submitBookForm);
     document.getElementById("book-cancel-edit")?.addEventListener("click", resetBookForm);

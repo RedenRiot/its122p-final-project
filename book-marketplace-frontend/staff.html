@@ -145,6 +145,25 @@
                         <input id="transactions-search" type="search" placeholder="Buyer, book title, type, status, or staff">
                     </div>
                     <div class="management-field">
+                        <label for="transactions-filter-type">Type</label>
+                        <select id="transactions-filter-type">
+                            <option value="">All Types</option>
+                            <option value="Purchase">Purchase</option>
+                            <option value="Trade">Trade</option>
+                        </select>
+                    </div>
+                    <div class="management-field">
+                        <label for="transactions-filter-status">Current Status</label>
+                        <select id="transactions-filter-status">
+                            <option value="">All Statuses</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Accepted">Accepted</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                            <option value="Disputed">Disputed</option>
+                        </select>
+                    </div>
+                    <div class="management-field">
                         <label for="transactions-sort">Sort transactions</label>
                         <select id="transactions-sort">
                             <option value="newest">Newest first</option>
