@@ -390,7 +390,7 @@ SQL;
 <body>
 <div class="card">
     <div class="card-header">
-        <h1>📚 Librowse Database Setup</h1>
+        <h1><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:8px;" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>Librowse Database Setup</h1>
         <p>Setting up the book_marketplace database automatically…</p>
     </div>
     <div class="card-body">
@@ -410,7 +410,7 @@ SQL;
 
         <?php if ($success): ?>
         <div class="result success">
-            <h2>✅ Setup Complete!</h2>
+            <h2><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:8px;color:#16a34a;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>Setup Complete!</h2>
             <p>Database and all tables created successfully.</p>
             <p>All demo accounts use password: <strong>password</strong></p>
             <div class="accounts">
@@ -422,11 +422,11 @@ SQL;
                 <div class="account"><span class="name">priya_singh</span><span class="role">Staff</span></div>
             </div>
             <a href="../book-marketplace-frontend/login.html" class="btn">Go to Login →</a>
-            <div class="warning">⚠️ Delete setup.php from your server after setup is complete.</div>
+            <div class="warning"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Delete setup.php from your server after setup is complete.</div>
         </div>
         <?php else: ?>
         <div class="result failure">
-            <h2>❌ Setup Failed</h2>
+            <h2><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:8px;color:#dc2626;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>Setup Failed</h2>
             <p>Check the error above. Common fixes:</p>
             <p>• Make sure MySQL is running in XAMPP</p>
             <p>• Make sure your MySQL root password is empty (default XAMPP)</p>

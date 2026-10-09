@@ -690,8 +690,20 @@
 }
 
 .trust-icon {
-    font-size: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--r-sm, 8px);
+    background: var(--paper, #f8f3ea);
+    color: var(--spine, #9a7458);
     margin-bottom: 14px;
+}
+
+.trust-icon svg {
+    width: 24px;
+    height: 24px;
 }
 
 .trust-card h3 {

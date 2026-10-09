@@ -162,15 +162,15 @@ This order ensures that:
 ## HTML File Updates
 
 All 9 HTML files have been updated to reference the new CSS location:
-- ✅ index.html
-- ✅ browse.html
-- ✅ list-book.html
-- ✅ login.html
-- ✅ register.html
-- ✅ dashboard.html
-- ✅ customer-dashboard.html
-- ✅ transactions.html
-- ✅ support.html
+- [x] index.html
+- [x] browse.html
+- [x] list-book.html
+- [x] login.html
+- [x] register.html
+- [x] dashboard.html
+- [x] customer-dashboard.html
+- [x] transactions.html
+- [x] support.html
 
 **Update:** Changed from:
 ```html

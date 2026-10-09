@@ -4,7 +4,7 @@ An integrated, full-stack web platform for peer-to-peer book listing, purchasing
 
 ---
 
-## 👥 Group Members
+## Group Members
 
 - **Advincula, Jordan Christopher**
 - **Domingo, Nicholas Reuben**
@@ -14,7 +14,7 @@ An integrated, full-stack web platform for peer-to-peer book listing, purchasing
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 - **Role-Based Access Control (RBAC)**: Secure access tiers for **Customer**, **Staff**, and **Administrator**.
 - **Customer Portal**: Browse books, search and filter by category/condition, list personal books for sale or trade, request refunds, file moderation reports, and view activity metrics via the dedicated **Customer Dashboard** (`customer-dashboard.html`).
@@ -25,7 +25,7 @@ An integrated, full-stack web platform for peer-to-peer book listing, purchasing
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```text
 its122p-final-project/
@@ -81,7 +81,7 @@ its122p-final-project/
 
 ---
 
-## 🛠️ Quick Start & Local Setup
+## Quick Start & Local Setup
 
 ### 1. Prerequisites
 - **PHP 8.0+** with PDO MySQL enabled
@@ -120,7 +120,7 @@ DB_SSL=false
 
 ---
 
-## 🔑 Demo Accounts (Seeded Data)
+## Demo Accounts (Seeded Data)
 
 | Role | Username | Password | Default Landing Page |
 |---|---|---|---|
@@ -131,7 +131,7 @@ DB_SSL=false
 
 ---
 
-## ☁️ Vercel Deployment
+## Vercel Deployment
 
 This repository is pre-configured for one-click deployment on **Vercel**:
 - `vercel.json` maps incoming requests to static frontend files in `book-marketplace-frontend/` and API endpoints via the `vercel-php@0.9.0` runtime.
@@ -145,7 +145,7 @@ This repository is pre-configured for one-click deployment on **Vercel**:
 
 ---
 
-## 📖 Additional Documentation
+## Additional Documentation
 
 - [Project Overview & Demo Presentation Guide](PROJECT_OVERVIEW_AND_DEMO_GUIDE.md)
 - [Admin & Staff Guide](docs/ADMIN_STAFF_GUIDE.md)
