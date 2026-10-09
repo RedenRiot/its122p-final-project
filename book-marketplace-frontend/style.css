@@ -3924,7 +3924,7 @@ button:disabled {
     color: #fffaf3;
     box-shadow: 0 12px 32px rgba(45, 31, 23, .25);
 }
-<<<<<<< HEAD
+
 .dashboard-card:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.10); }
 .dashboard-card h3 { font-size: 13px; font-weight: 600; color: var(--text-gray, #64748b); margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 .dashboard-stat { font-size: 36px; font-weight: 800; color: var(--primary, #6366f1); margin: 0 0 4px; line-height: 1; }
@@ -4074,7 +4074,6 @@ button.lock-request-btn:hover { background: #b91c1c; }
 }
 .unlock-done span { color: #334155; font-size: 14px; }
 .unlock-done button { margin-top: 6px; }
-=======
 
 .cta-inner {
     max-width: 680px;
@@ -4246,4 +4245,4 @@ button.lock-request-btn:hover { background: #b91c1c; }
         display: none;
     }
 }
->>>>>>> 9dd588cdbcb3bcee8e0c8d5408e2f701d92e6d0a
+

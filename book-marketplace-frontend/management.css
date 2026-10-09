@@ -503,4 +503,3 @@ body.management-body {
 @keyframes mg-shimmer { to { background-position: -300% 0; } }
 .management-btn:disabled { opacity: .7; cursor: progress; }
 @media (prefers-reduced-motion: reduce) { .mg-spinner, .mg-skeleton::after { animation-duration: 2.5s; } }
->>>>>>> 9dd588cdbcb3bcee8e0c8d5408e2f701d92e6d0a
