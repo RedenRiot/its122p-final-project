@@ -19,4 +19,4 @@ $crud = new Crud(
     required: ['created_by_admin_id', 'category_name'],
 );
 
-dispatch_crud_request($crud, 'category_id');
+dispatch_crud_request($crud, 'category_id', requireAuth: false);

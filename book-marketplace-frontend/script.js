@@ -875,6 +875,12 @@ async function loadCategories() {
         });
 
 
+        if (Array.isArray(categories) && categories.length > 0) {
+            try {
+                localStorage.setItem("librowse_cached_categories", JSON.stringify(categories));
+            } catch (_) {}
+        }
+
         if (categoryOptions) {
 
             renderCategoryCheckboxes(
@@ -910,6 +916,31 @@ async function loadCategories() {
         }
 
     } catch (error) {
+
+        let cachedCategories = null;
+        try {
+            const raw = localStorage.getItem("librowse_cached_categories");
+            if (raw) cachedCategories = JSON.parse(raw);
+        } catch (_) {}
+
+        if (Array.isArray(cachedCategories) && cachedCategories.length > 0) {
+            categoryMap = {};
+            cachedCategories.forEach(function (category) {
+                categoryMap[category.category_id] = category.category_name;
+            });
+            if (categoryOptions) {
+                renderCategoryCheckboxes(categoryOptions, cachedCategories, "book-category");
+            }
+            if (filterCategoryOptions) {
+                renderCategoryCheckboxes(filterCategoryOptions, cachedCategories, "filter-category");
+                filterCategoryOptions
+                    .querySelectorAll('input[name="category_ids"]')
+                    .forEach(function (checkbox) {
+                        checkbox.addEventListener("change", filterBooks);
+                    });
+            }
+            return;
+        }
 
         const message = `
             <p class="checkbox-group-empty">

@@ -10,7 +10,7 @@
  *   PUT    /api/user.php?id=5       -> update (JSON body, partial)
  *   DELETE /api/user.php?id=5       -> delete
  */
-function dispatch_crud_request(Crud $crud, string $primaryKeyName): void
+function dispatch_crud_request(Crud $crud, string $primaryKeyName, bool $requireAuth = true): void
 {
     global $pdo; /* bring the $pdo connection into function scope */
 
@@ -23,7 +23,9 @@ function dispatch_crud_request(Crud $crud, string $primaryKeyName): void
         exit;
     }
 
-    require_authenticated_user($pdo);
+    if ($requireAuth) {
+        require_authenticated_user($pdo);
+    }
 
     $id = $_GET['id'] ?? null;
 
