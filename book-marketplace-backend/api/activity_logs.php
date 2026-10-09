@@ -25,7 +25,12 @@ try {
         $limit = max(1, min(500, (int) ($_GET['limit'] ?? 100)));
         $offset = max(0, (int) ($_GET['offset'] ?? 0));
 
-        $conditions = ['1=1'];
+        $conditions = [
+            '1=1',
+            "activity_action NOT IN ('ResetPassword', 'RequestPasswordReset')",
+            "activity_action NOT LIKE '%ResetPassword%'",
+            "activity_action NOT LIKE '%PasswordReset%'",
+        ];
         $params = [];
         if (!empty($_GET['activity_type'])) {
             $conditions[] = 'activity_type = :activity_type';
@@ -64,6 +69,12 @@ try {
         $action = trim((string) ($body['activity_action'] ?? 'Unknown'));
         if ($type === '' || $action === '') {
             Response::error('activity_type and activity_action are required.', 422);
+        }
+
+        if (in_array($action, ['ResetPassword', 'RequestPasswordReset'], true)
+            || stripos($action, 'passwordreset') !== false
+            || stripos($action, 'resetpassword') !== false) {
+            Response::json(['message' => 'Ignored confidential action.'], 200);
         }
 
         record_activity_log($pdo, [

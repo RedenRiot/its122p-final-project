@@ -221,7 +221,11 @@ async function loadRecords() {
 }
 
 async function loadActivityLogs() {
-    managementState.activityLogs = await mgApi("activity_logs.php?limit=500&offset=0");
+    const logs = await mgApi("activity_logs.php?limit=500&offset=0");
+    managementState.activityLogs = (Array.isArray(logs) ? logs : []).filter(log => {
+        const action = String(log.activity_action || "").toLowerCase();
+        return !action.includes("resetpassword") && !action.includes("passwordreset");
+    });
     return managementState.activityLogs;
 }
 

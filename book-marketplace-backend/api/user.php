@@ -63,6 +63,14 @@ try {
         $body = request_body();
         $password = (string) ($body['password'] ?? '');
         if (strlen($password) < 8) Response::error('Password must be at least 8 characters.', 422);
+        if (isset($body['email'])) {
+            $email = trim(strtolower((string) $body['email']));
+            $emailPattern = '/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/';
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match($emailPattern, $email)) {
+                Response::error('Please enter the right format for your email address (e.g. you@example.com).', 422);
+            }
+            $body['email'] = $email;
+        }
         unset($body['password'], $body['password_hash']);
         $body['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
         try {
@@ -78,6 +86,15 @@ try {
         $target = $crud->show($id);
         if (!$target) Response::error('User not found.', 404);
         $body = request_body();
+
+        if (isset($body['email'])) {
+            $email = trim(strtolower((string) $body['email']));
+            $emailPattern = '/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/';
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match($emailPattern, $email)) {
+                Response::error('Please enter the right format for your email address (e.g. you@example.com).', 422);
+            }
+            $body['email'] = $email;
+        }
 
         if (array_key_exists('password_hash', $body)) {
             Response::error('Passwords cannot be changed here.', 422);

@@ -88,6 +88,14 @@ function ensure_activity_logs_table(PDO $pdo): void
 
 function record_activity_log(PDO $pdo, array $data): void
 {
+    $action = (string) ($data['activity_action'] ?? 'Unknown');
+    // Password reset operations are confidential and must not be logged.
+    if (in_array($action, ['ResetPassword', 'RequestPasswordReset'], true)
+        || stripos($action, 'passwordreset') !== false
+        || stripos($action, 'resetpassword') !== false) {
+        return;
+    }
+
     try {
         ensure_activity_logs_table($pdo);
 

@@ -83,6 +83,90 @@ async function findUsersByField(field, value) {
     return Array.isArray(users) ? users : [];
 }
 
+const EMAIL_FORMAT_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+function validateEmailFormat(value) {
+    return EMAIL_FORMAT_REGEX.test(String(value || "").trim());
+}
+
+function updateFieldValidation(input, errorEl, isValid, message) {
+    if (!input) return;
+    if (isValid) {
+        input.setCustomValidity("");
+        input.classList.remove("field-invalid");
+        if (errorEl) {
+            errorEl.textContent = "";
+            errorEl.style.display = "none";
+        }
+    } else {
+        input.setCustomValidity(message);
+        input.classList.add("field-invalid");
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.style.display = "block";
+        }
+    }
+}
+
+function initEmailFormatGuards() {
+    const regEmail = document.getElementById("register-email");
+    const regEmailErr = document.getElementById("register-email-error");
+    if (regEmail) {
+        const check = () => {
+            const val = regEmail.value.trim();
+            if (!val) {
+                updateFieldValidation(regEmail, regEmailErr, true, "");
+                return;
+            }
+            if (!validateEmailFormat(val)) {
+                updateFieldValidation(regEmail, regEmailErr, false, "Please enter the right format (e.g. you@example.com).");
+            } else {
+                updateFieldValidation(regEmail, regEmailErr, true, "");
+            }
+        };
+        regEmail.addEventListener("input", check);
+        regEmail.addEventListener("blur", check);
+    }
+
+    const forgotIdent = document.getElementById("forgot-identifier");
+    const forgotErr = document.getElementById("forgot-identifier-error");
+    if (forgotIdent) {
+        const check = () => {
+            const val = forgotIdent.value.trim();
+            if (!val) {
+                updateFieldValidation(forgotIdent, forgotErr, true, "");
+                return;
+            }
+            if (val.includes("@") && !validateEmailFormat(val)) {
+                updateFieldValidation(forgotIdent, forgotErr, false, "Please enter the right format (e.g. you@example.com).");
+            } else {
+                updateFieldValidation(forgotIdent, forgotErr, true, "");
+            }
+        };
+        forgotIdent.addEventListener("input", check);
+        forgotIdent.addEventListener("blur", check);
+    }
+
+    const resendIdent = document.getElementById("resend-identifier");
+    const resendErr = document.getElementById("resend-identifier-error");
+    if (resendIdent) {
+        const check = () => {
+            const val = resendIdent.value.trim();
+            if (!val) {
+                updateFieldValidation(resendIdent, resendErr, true, "");
+                return;
+            }
+            if (val.includes("@") && !validateEmailFormat(val)) {
+                updateFieldValidation(resendIdent, resendErr, false, "Please enter the right format (e.g. you@example.com).");
+            } else {
+                updateFieldValidation(resendIdent, resendErr, true, "");
+            }
+        };
+        resendIdent.addEventListener("input", check);
+        resendIdent.addEventListener("blur", check);
+    }
+}
+
 /* ==========================================================================
    UI NOTIFICATIONS & FEEDBACK
    ========================================================================== */
@@ -321,6 +405,11 @@ function initUnlockRequest() {
             err.style.display = "block";
             return;
         }
+        if (identifier.includes("@") && !validateEmailFormat(identifier)) {
+            err.textContent = "Please enter the right format (e.g. you@example.com).";
+            err.style.display = "block";
+            return;
+        }
         err.style.display = "none";
         submit.disabled = true;
         submit.textContent = "Sending…";
@@ -375,6 +464,10 @@ async function handleLogin(event) {
     if (isAccountMarkedLocked(identifier)) { setLoginLocked(true, identifier); return; }
     if (!identifier || !password) {
         showMessage("Please enter both your email/username and password.", "error");
+        return;
+    }
+    if (identifier.includes("@") && !validateEmailFormat(identifier)) {
+        showMessage("Please enter the right format for your email address (e.g. you@example.com).", "error");
         return;
     }
     if (submitBtn) { submitBtn.disabled = true; submitBtn.querySelector("span").textContent = "Signing in..."; }
@@ -457,14 +550,20 @@ async function handleLogin(event) {
 async function handleRegister(event) {
     event.preventDefault();
     const username = document.getElementById("register-username")?.value.trim() || "";
-    const email = document.getElementById("register-email")?.value.trim().toLowerCase() || "";
+    const regEmailInput = document.getElementById("register-email");
+    const regEmailErr = document.getElementById("register-email-error");
+    const email = regEmailInput?.value.trim().toLowerCase() || "";
     const password = document.getElementById("register-password")?.value || "";
     const confirmPassword = document.getElementById("register-confirm-password")?.value || "";
     const submitBtn = document.getElementById("register-submit-btn");
 
     if (!username || !email || !password || !confirmPassword) return showMessage("Please fill in all registration fields.", "error");
     if (!/^[a-zA-Z0-9_]{3,50}$/.test(username)) return showMessage("Username must be 3-50 characters and contain only letters, numbers, and underscores.", "error");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showMessage("Please provide a valid email address.", "error");
+    if (!validateEmailFormat(email)) {
+        updateFieldValidation(regEmailInput, regEmailErr, false, "Please enter the right format (e.g. you@example.com).");
+        regEmailInput?.focus();
+        return showMessage("Please enter the right format for your email address (e.g. you@example.com).", "error");
+    }
     if (password.length < 8) return showMessage("Password must be at least 8 characters long.", "error");
     if (password !== confirmPassword) return showMessage("Passwords do not match.", "error");
 
@@ -553,6 +652,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("login-form")?.addEventListener("submit", handleLogin);
     initLoginLockState();
     initUnlockRequest();
+    initEmailFormatGuards();
     document.getElementById("register-form")?.addEventListener("submit", handleRegister);
 
     document.getElementById("forgot-password-form")?.addEventListener("submit", handleForgotPassword);
@@ -579,11 +679,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function handleForgotPassword(event) {
     event.preventDefault();
-    const identifier = document.getElementById("forgot-identifier")?.value.trim() || "";
+    const identInput = document.getElementById("forgot-identifier");
+    const identErr = document.getElementById("forgot-identifier-error");
+    const identifier = identInput?.value.trim() || "";
     const submitBtn = document.getElementById("forgot-submit-btn");
 
     if (!identifier) {
         showMessage("Please enter your email address or username.", "error");
+        return;
+    }
+    if (identifier.includes("@") && !validateEmailFormat(identifier)) {
+        updateFieldValidation(identInput, identErr, false, "Please enter the right format (e.g. you@example.com).");
+        identInput?.focus();
+        showMessage("Please enter the right format for your email address (e.g. you@example.com).", "error");
         return;
     }
 
@@ -740,9 +848,16 @@ async function initVerifyEmailPage() {
     const resendForm = document.getElementById("resend-verification-form");
     resendForm?.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const identifier = document.getElementById("resend-identifier")?.value.trim() || "";
+        const resendInput = document.getElementById("resend-identifier");
+        const resendErr = document.getElementById("resend-identifier-error");
+        const identifier = resendInput?.value.trim() || "";
         const submitBtn = document.getElementById("resend-submit-btn");
         if (!identifier) return showMessage("Please enter your email or username.", "error");
+        if (identifier.includes("@") && !validateEmailFormat(identifier)) {
+            updateFieldValidation(resendInput, resendErr, false, "Please enter the right format (e.g. you@example.com).");
+            resendInput?.focus();
+            return showMessage("Please enter the right format for your email address (e.g. you@example.com).", "error");
+        }
 
         if (submitBtn) {
             submitBtn.disabled = true;

@@ -207,8 +207,9 @@ try {
         $email = trim(strtolower((string) ($body['email'] ?? '')));
         $password = (string) ($body['password'] ?? '');
 
+        $emailPattern = '/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/';
         if (!preg_match('/^[a-zA-Z0-9_]{3,50}$/', $username)) Response::error('Username must be 3-50 characters and contain only letters, numbers, and underscores.', 422);
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) Response::error('Please provide a valid email address.', 422);
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match($emailPattern, $email)) Response::error('Please enter the right format for your email address (e.g. you@example.com).', 422);
         if (strlen($password) < 8) Response::error('Password must be at least 8 characters long.', 422);
 
         $check = $pdo->prepare('SELECT user_id FROM `USER` WHERE username = :username OR LOWER(email) = LOWER(:email) LIMIT 1');
@@ -320,6 +321,10 @@ try {
         if ($identifier === '') {
             Response::error('Email address or username is required.', 422);
         }
+        $emailPattern = '/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/';
+        if (str_contains($identifier, '@') && (!filter_var($identifier, FILTER_VALIDATE_EMAIL) || !preg_match($emailPattern, $identifier))) {
+            Response::error('Please enter the right format for your email address (e.g. you@example.com).', 422);
+        }
 
         $stmt = $pdo->prepare(
             'SELECT user_id, username, email, status FROM `USER`
@@ -356,6 +361,10 @@ try {
         if ($identifier === '') {
             Response::error('Email address or username is required.', 422);
         }
+        $emailPattern = '/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/';
+        if (str_contains($identifier, '@') && (!filter_var($identifier, FILTER_VALIDATE_EMAIL) || !preg_match($emailPattern, $identifier))) {
+            Response::error('Please enter the right format for your email address (e.g. you@example.com).', 422);
+        }
 
         $stmt = $pdo->prepare(
             'SELECT user_id, username, email, status FROM `USER`
@@ -379,15 +388,6 @@ try {
             $ins->execute(['uid' => $uid, 'thash' => $tokenHash, 'expires' => $expiresAt]);
 
             $mailRes = send_password_reset_email((string) $user['email'], (string) $user['username'], $rawToken);
-
-            record_activity_log($pdo, [
-                'actor_user_id'   => $uid,
-                'activity_type'   => 'Account',
-                'activity_action' => 'RequestPasswordReset',
-                'outcome'         => 'Success',
-                'page_path'       => '/forgot-password.html',
-                'details'         => ['dev_mode' => $mailRes['dev_mode'] ?? false],
-            ]);
         }
 
         Response::json([
@@ -472,14 +472,6 @@ try {
 
         $pdo->prepare('UPDATE `LIBROWSE_SESSIONS` SET revoked_at = UTC_TIMESTAMP() WHERE user_id = :uid AND revoked_at IS NULL')
             ->execute(['uid' => $uid]);
-
-        record_activity_log($pdo, [
-            'actor_user_id'   => $uid,
-            'activity_type'   => 'Account',
-            'activity_action' => 'ResetPassword',
-            'outcome'         => 'Success',
-            'page_path'       => '/reset-password.html',
-        ]);
 
         Response::json([
             'success' => true,
