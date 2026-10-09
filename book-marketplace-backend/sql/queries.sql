@@ -280,4 +280,31 @@ INSERT INTO `ACTIVITY_LOGS` (`activity_id`,`actor_user_id`,`visitor_key`,`activi
   (5, 3, NULL, 'Consent', 'Cookie Consent Accepted', 'Success', NULL, '/index.html', 'Consent', NULL, '{"policy":"privacy-cookie"}', '2024-04-01 08:55:00'),
   (6, 8, NULL, 'Visit', 'Browse Page Visit', 'Neutral', NULL, '/browse.html', 'Page', 'browse', '{"page":"Browse","consent":"granted"}', '2024-04-08 09:45:00');
 
+/* EMAIL VERIFICATION TOKENS */
+CREATE TABLE IF NOT EXISTS `EMAIL_VERIFICATIONS` (
+  `verification_id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `token_hash` VARCHAR(64) NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`verification_id`),
+  INDEX `idx_ev_user` (`user_id`),
+  INDEX `idx_ev_token` (`token_hash`),
+  CONSTRAINT `fk_ev_user` FOREIGN KEY (`user_id`) REFERENCES `USER`(`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+/* PASSWORD RESET TOKENS */
+CREATE TABLE IF NOT EXISTS `PASSWORD_RESETS` (
+  `reset_id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `token_hash` VARCHAR(64) NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `used_at` DATETIME DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`reset_id`),
+  INDEX `idx_pr_user` (`user_id`),
+  INDEX `idx_pr_token` (`token_hash`),
+  CONSTRAINT `fk_pr_user` FOREIGN KEY (`user_id`) REFERENCES `USER`(`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 

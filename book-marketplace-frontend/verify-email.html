@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&family=Courier+Prime:wght@400;700&display=swap">
+
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+
+    <title>Verify Email - Librowse Book Exchange</title>
+</head>
+
+<body class="auth-page">
+<script src="consent.js"></script>
+
+    <!-- HEADER -->
+    <header>
+        <h1>Librowse Book Exchange</h1>
+
+        <nav>
+            <a href="index.html">Marketplace</a>
+            <a href="login.html">Sign In</a>
+            <a href="register.html">Create Account</a>
+        </nav>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main>
+
+        <aside class="auth-art">
+            <img src="assets/books-stack.svg" alt="A stack of books with a cup of tea" width="260" height="220">
+            <h2>Welcome to the community.</h2>
+            <p>Confirming your email keeps our marketplace safe, reliable, and trustworthy for all book readers.</p>
+        </aside>
+
+        <section class="auth-card" id="auth-section">
+
+            <div class="auth-brand-badge">
+                <svg viewBox="0 0 24 24">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+                Account Verification
+            </div>
+
+            <h2 id="verify-heading">Email Verification</h2>
+
+            <div id="auth-message" class="auth-message" style="display: none;"></div>
+
+            <!-- Loading card while verifying token -->
+            <div id="verify-loading-card" class="session-active-card">
+                <p>Verifying your email address...</p>
+            </div>
+
+            <!-- Success card -->
+            <div id="verify-success-card" class="session-active-card" style="display: none;">
+                <p id="verify-success-text">Your email address has been verified successfully. Your account is active and ready.</p>
+                <div class="session-actions">
+                    <a href="login.html" class="btn-continue">Sign In to Your Account</a>
+                </div>
+            </div>
+
+            <!-- Resend Form Card (Shown when token is missing, expired, or failed) -->
+            <div id="resend-card" style="display: none;">
+                <p class="auth-intro-text" id="resend-intro-text">Need a new verification link? Enter your email address or username below.</p>
+
+                <form id="resend-verification-form" class="auth-form">
+                    <div class="form-group">
+                        <label for="resend-identifier">Email Address or Username</label>
+                        <input type="text" id="resend-identifier" required placeholder="emma_clarke or you@example.com" autocomplete="username email">
+                    </div>
+
+                    <button type="submit" id="resend-submit-btn" class="auth-submit-btn">
+                        <span>Send New Verification Link</span>
+                    </button>
+                </form>
+
+                <div id="dev-resend-preview" class="dev-preview-box" style="display: none;">
+                    <strong>Developer Preview (Local Testing)</strong>
+                    <p>Since email credentials are in test mode, click the link below to verify:</p>
+                    <a id="dev-resend-link" href="#" class="dev-preview-btn">Verify Email Now</a>
+                </div>
+            </div>
+
+            <p class="auth-switch-link">
+                Already verified?
+                <a href="login.html">Sign in here</a>
+            </p>
+
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer>
+        <p>Librowse Book Exchange</p>
+        <p>ITS122P Final Project</p>
+    </footer>
+
+    <script src="auth.js"></script>
+
+</body>
+
+</html>

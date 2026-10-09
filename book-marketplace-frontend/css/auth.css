@@ -68,6 +68,33 @@
     margin-top: 16px;
 }
 
+.form-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.form-label-row label {
+    margin-top: 0;
+}
+
+.auth-helper-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--spine);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    padding: 4px 0;
+    transition: color 0.15s ease;
+}
+
+.auth-helper-link:hover,
+.auth-helper-link:focus-visible {
+    color: var(--ink);
+}
+
 /* =========================================================================
    PASSWORD INPUT WITH TOGGLE
    ========================================================================= */
@@ -246,6 +273,51 @@
 
 .session-actions .btn-switch-user:hover {
     background: var(--surface);
+}
+
+.auth-intro-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--muted);
+    margin: 0 0 16px;
+}
+
+.dev-preview-box {
+    margin-top: 16px;
+    padding: 14px 16px;
+    background: #eef4f9;
+    border: 1px solid #c9d8e6;
+    border-radius: var(--r-md);
+    font-size: 13px;
+    color: #2c445a;
+}
+
+.dev-preview-box strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #1e3347;
+}
+
+.dev-preview-box p {
+    margin: 0 0 8px;
+}
+
+.dev-preview-btn {
+    display: inline-block;
+    padding: 8px 14px;
+    background: #355370;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 13px;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+}
+
+.dev-preview-btn:hover,
+.dev-preview-btn:focus-visible {
+    background: #233a50;
+    color: #ffffff;
 }
 
 /* =========================================================================

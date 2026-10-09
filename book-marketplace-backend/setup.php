@@ -46,7 +46,8 @@ if ($success) {
 
 if ($success) {
     $sql = <<<SQL
-SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS `EMAIL_VERIFICATIONS`;
+DROP TABLE IF EXISTS `PASSWORD_RESETS`;
 DROP TABLE IF EXISTS `SYSTEM_RECORDS`;
 DROP TABLE IF EXISTS `REPORTS`;
 DROP TABLE IF EXISTS `REFUND_REQUEST`;
@@ -186,13 +187,38 @@ CREATE TABLE `ACTIVITY_LOGS` (
     PRIMARY KEY (`activity_id`),
     CONSTRAINT `fk_activity_logs_actor_user_id` FOREIGN KEY (`actor_user_id`) REFERENCES `USER`(`user_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `EMAIL_VERIFICATIONS` (
+  `verification_id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `token_hash` VARCHAR(64) NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`verification_id`),
+  INDEX `idx_ev_user` (`user_id`),
+  INDEX `idx_ev_token` (`token_hash`),
+  CONSTRAINT `fk_ev_user` FOREIGN KEY (`user_id`) REFERENCES `USER`(`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `PASSWORD_RESETS` (
+  `reset_id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `token_hash` VARCHAR(64) NOT NULL,
+  `expires_at` DATETIME NOT NULL,
+  `used_at` DATETIME DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`reset_id`),
+  INDEX `idx_pr_user` (`user_id`),
+  INDEX `idx_pr_token` (`token_hash`),
+  CONSTRAINT `fk_pr_user` FOREIGN KEY (`user_id`) REFERENCES `USER`(`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL;
 
     try {
         foreach (array_filter(array_map('trim', explode(';', $sql))) as $statement) {
             if ($statement !== '') $pdo->exec($statement);
         }
-        $steps[] = step('Created all tables', true, 'USER, BOOK_CATEGORIES, BOOKS_CATALOG, BOOK_CATEGORY_MAP, USER_BOOKS, TRANSACTIONS, REFUND_REQUEST, REPORTS, SYSTEM_RECORDS, ACTIVITY_LOGS');
+        $steps[] = step('Created all tables', true, 'USER, BOOK_CATEGORIES, BOOKS_CATALOG, BOOK_CATEGORY_MAP, USER_BOOKS, TRANSACTIONS, REFUND_REQUEST, REPORTS, SYSTEM_RECORDS, ACTIVITY_LOGS, EMAIL_VERIFICATIONS, PASSWORD_RESETS');
     } catch (PDOException $e) {
         $steps[] = step('Created all tables', false, $e->getMessage());
         $success = false;

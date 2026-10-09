@@ -57,4 +57,5 @@ require_once __DIR__ . '/soft_delete.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/Crud.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/dispatch.php';

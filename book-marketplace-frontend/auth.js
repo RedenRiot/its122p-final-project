@@ -397,6 +397,36 @@ async function handleLogin(event) {
             return;
         }
         if (!response.ok) {
+            if (data.pending_verification) {
+                const messageEl = document.getElementById("auth-message");
+                if (messageEl) {
+                    messageEl.className = "auth-message auth-warning";
+                    messageEl.style.display = "block";
+                    messageEl.innerHTML = `
+                        <div>
+                            <strong>Email verification required</strong>
+                            <p style="margin:4px 0 10px;">Please check your inbox at <strong>${escapeHTML(data.email || identifier)}</strong> for the verification link.</p>
+                            <button type="button" class="text-link" id="resend-login-link" style="font-weight:700;text-decoration:underline;">
+                                Resend verification email
+                            </button>
+                        </div>
+                    `;
+                    document.getElementById("resend-login-link")?.addEventListener("click", async () => {
+                        try {
+                            const res = await fetch(`${API_BASE}/auth.php?action=resend-verification`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ identifier: data.email || identifier })
+                            });
+                            const rData = await res.json();
+                            showMessage(rData.message || "Verification email sent.", "info");
+                        } catch (err) {
+                            showMessage("Could not resend email: " + err.message, "error");
+                        }
+                    });
+                }
+                return;
+            }
             if (data.attempts_used) {
                 showAttemptWarning(data.attempts_used, data.max_attempts || 3, !!data.final_warning);
                 const pw = document.getElementById("login-password");
@@ -424,14 +454,6 @@ async function handleLogin(event) {
     }
 }
 
-/* ==========================================================================
-   REGISTRATION HANDLER
-   ========================================================================== */
-
-/**
- * Processes new Customer account creation
- * @param {Event} event
- */
 async function handleRegister(event) {
     event.preventDefault();
     const username = document.getElementById("register-username")?.value.trim() || "";
@@ -456,6 +478,31 @@ async function handleRegister(event) {
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Registration failed.");
+
+        if (data.requires_verification) {
+            showMessage(data.message, "success");
+            const form = document.getElementById("register-form");
+            if (form) {
+                form.innerHTML = `
+                    <div class="session-active-card">
+                        <p style="margin:0 0 12px;color:var(--ok);font-size:16px;"><strong>Registration Successful</strong></p>
+                        <p style="margin:0 0 16px;color:var(--text);">${escapeHTML(data.message)}</p>
+                        ${data.dev_preview_link ? `
+                            <div class="dev-preview-box">
+                                <strong>Developer Preview (Local Testing)</strong>
+                                <p>Click below to verify your account immediately:</p>
+                                <a href="${data.dev_preview_link}" class="dev-preview-btn">Verify Account Now</a>
+                            </div>
+                        ` : ''}
+                        <div class="session-actions" style="margin-top:16px;">
+                            <a href="login.html" class="btn-continue">Go to Sign In</a>
+                        </div>
+                    </div>
+                `;
+            }
+            return;
+        }
+
         saveCurrentUser(data.user, data.token);
         showMessage("Account created successfully! Redirecting...", "success");
         setTimeout(() => window.location.replace("customer-dashboard.html"), 250);
@@ -508,6 +555,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     initUnlockRequest();
     document.getElementById("register-form")?.addEventListener("submit", handleRegister);
 
+    document.getElementById("forgot-password-form")?.addEventListener("submit", handleForgotPassword);
+    initResetPasswordPage();
+    initVerifyEmailPage();
+
     document.querySelectorAll(".toggle-password-btn").forEach(button => button.addEventListener("click", () => {
         const input = document.getElementById(button.dataset.target);
         if (input) input.type = input.type === "password" ? "text" : "password";
@@ -523,10 +574,216 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 /* ==========================================================================
-   PASSWORD STRENGTH METER (register page)
+   FORGOT PASSWORD & RESET PASSWORD HANDLERS
+   ========================================================================== */
+
+async function handleForgotPassword(event) {
+    event.preventDefault();
+    const identifier = document.getElementById("forgot-identifier")?.value.trim() || "";
+    const submitBtn = document.getElementById("forgot-submit-btn");
+
+    if (!identifier) {
+        showMessage("Please enter your email address or username.", "error");
+        return;
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.querySelector("span").textContent = "Sending Link...";
+    }
+    showMessage("Processing request...", "info");
+
+    try {
+        const response = await fetch(`${API_BASE}/auth.php?action=forgot-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+            cache: "no-store",
+            body: JSON.stringify({ identifier })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Unable to send reset link.");
+
+        showMessage(data.message, "success");
+
+        if (data.dev_preview_link) {
+            const previewBox = document.getElementById("dev-preview-container");
+            const previewLink = document.getElementById("dev-preview-link");
+            if (previewBox && previewLink) {
+                previewLink.href = data.dev_preview_link;
+                previewBox.style.display = "block";
+            }
+        }
+    } catch (err) {
+        showMessage(err.message, "error");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.querySelector("span").textContent = "Send Reset Link";
+        }
+    }
+}
+
+async function initResetPasswordPage() {
+    const form = document.getElementById("reset-password-form");
+    if (!form) return;
+
+    const checkingCard = document.getElementById("token-checking-card");
+    const invalidCard = document.getElementById("token-invalid-card");
+    const invalidText = document.getElementById("token-invalid-text");
+    const successCard = document.getElementById("reset-success-card");
+    const submitBtn = document.getElementById("reset-submit-btn");
+
+    const token = new URLSearchParams(window.location.search).get("token");
+    if (!token) {
+        if (checkingCard) checkingCard.style.display = "none";
+        if (invalidCard) {
+            invalidCard.style.display = "block";
+            if (invalidText) invalidText.textContent = "Missing password reset token. Please request a new link.";
+        }
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/auth.php?action=verify-reset-token&token=${encodeURIComponent(token)}`, {
+            cache: "no-store"
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Invalid or expired reset link.");
+
+        if (checkingCard) checkingCard.style.display = "none";
+        form.style.display = "block";
+    } catch (err) {
+        if (checkingCard) checkingCard.style.display = "none";
+        if (invalidCard) {
+            invalidCard.style.display = "block";
+            if (invalidText) invalidText.textContent = err.message;
+        }
+        return;
+    }
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const password = document.getElementById("reset-password")?.value || "";
+        const confirm = document.getElementById("reset-confirm-password")?.value || "";
+
+        if (password.length < 8) {
+            showMessage("Password must be at least 8 characters long.", "error");
+            return;
+        }
+        if (password !== confirm) {
+            showMessage("Passwords do not match.", "error");
+            return;
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.querySelector("span").textContent = "Updating...";
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/auth.php?action=reset-password`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+                cache: "no-store",
+                body: JSON.stringify({ token, password })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Could not reset password.");
+
+            form.style.display = "none";
+            showMessage("", "info");
+            if (successCard) successCard.style.display = "block";
+        } catch (err) {
+            showMessage(err.message, "error");
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.querySelector("span").textContent = "Update Password";
+            }
+        }
+    });
+}
+
+async function initVerifyEmailPage() {
+    const loadingCard = document.getElementById("verify-loading-card");
+    if (!loadingCard) return;
+
+    const successCard = document.getElementById("verify-success-card");
+    const resendCard = document.getElementById("resend-card");
+    const heading = document.getElementById("verify-heading");
+    const token = new URLSearchParams(window.location.search).get("token");
+
+    if (token) {
+        try {
+            const response = await fetch(`${API_BASE}/auth.php?action=verify-email`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+                cache: "no-store",
+                body: JSON.stringify({ token })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Verification failed.");
+
+            loadingCard.style.display = "none";
+            if (heading) heading.textContent = "Email Verified";
+            if (successCard) successCard.style.display = "block";
+        } catch (err) {
+            loadingCard.style.display = "none";
+            showMessage(err.message, "error");
+            if (resendCard) resendCard.style.display = "block";
+        }
+    } else {
+        loadingCard.style.display = "none";
+        if (resendCard) resendCard.style.display = "block";
+    }
+
+    const resendForm = document.getElementById("resend-verification-form");
+    resendForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const identifier = document.getElementById("resend-identifier")?.value.trim() || "";
+        const submitBtn = document.getElementById("resend-submit-btn");
+        if (!identifier) return showMessage("Please enter your email or username.", "error");
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.querySelector("span").textContent = "Sending...";
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/auth.php?action=resend-verification`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+                cache: "no-store",
+                body: JSON.stringify({ identifier })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Could not send verification email.");
+
+            showMessage(data.message, "success");
+            if (data.dev_preview_link) {
+                const devBox = document.getElementById("dev-resend-preview");
+                const devLink = document.getElementById("dev-resend-link");
+                if (devBox && devLink) {
+                    devLink.href = data.dev_preview_link;
+                    devBox.style.display = "block";
+                }
+            }
+        } catch (err) {
+            showMessage(err.message, "error");
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.querySelector("span").textContent = "Send New Verification Link";
+            }
+        }
+    });
+}
+
+/* ==========================================================================
+   PASSWORD STRENGTH METER (register and reset pages)
    ========================================================================== */
 (function () {
-    const pw = document.getElementById("register-password");
+    const pw = document.getElementById("register-password") || document.getElementById("reset-password");
     if (!pw) return;
 
     const fill = document.getElementById("pw-strength-fill");
@@ -562,7 +819,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         { label: "Very weak", color: "#ef4444", pct: "20%" },
         { label: "Weak",      color: "#f97316", pct: "40%" },
         { label: "Fair",      color: "#eab308", pct: "60%" },
-        { label: "Almost there — 1 rule left", color: "#84cc16", pct: "80%" },
+        { label: "Almost there: 1 rule left", color: "#84cc16", pct: "80%" },
         { label: "Strong", color: "#16a34a", pct: "100%" },
     ];
 
@@ -571,7 +828,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!fill) return;
         if (!v) {
             fill.style.width = "0"; fill.style.background = "";
-            if (label) { label.textContent = "Password strength: —"; label.style.color = ""; }
+            if (label) { label.textContent = "Password strength: None"; label.style.color = ""; }
             score("");
             checkMatch();
             return;
@@ -585,8 +842,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         checkMatch();
     });
 
-    /* "Passwords match" / "don't match" under Confirm Password */
-    const confirm = document.getElementById("register-confirm-password");
+    const confirm = document.getElementById("register-confirm-password") || document.getElementById("reset-confirm-password");
     const matchEl = document.getElementById("password-match-indicator");
     function checkMatch() {
         if (!confirm || !matchEl) return;

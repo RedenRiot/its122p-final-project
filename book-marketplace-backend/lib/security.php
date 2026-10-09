@@ -31,6 +31,44 @@ function ensure_sessions_table(PDO $pdo): void
     ensure_column($pdo, 'USER', 'deleted_at');
 }
 
+function ensure_auth_tokens_tables(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `EMAIL_VERIFICATIONS` (
+            `verification_id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+            `user_id` INT UNSIGNED NOT NULL,
+            `token_hash` VARCHAR(64) NOT NULL,
+            `expires_at` DATETIME NOT NULL,
+            `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`verification_id`),
+            INDEX `idx_ev_user` (`user_id`),
+            INDEX `idx_ev_token` (`token_hash`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (PDOException $e) {
+        // Table may already exist
+    }
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `PASSWORD_RESETS` (
+            `reset_id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+            `user_id` INT UNSIGNED NOT NULL,
+            `token_hash` VARCHAR(64) NOT NULL,
+            `expires_at` DATETIME NOT NULL,
+            `used_at` DATETIME DEFAULT NULL,
+            `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`reset_id`),
+            INDEX `idx_pr_user` (`user_id`),
+            INDEX `idx_pr_token` (`token_hash`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (PDOException $e) {
+        // Table may already exist
+    }
+}
+
 function issue_auth_token(array $user): string
 {
     global $pdo;

@@ -52,6 +52,7 @@ function ensure_locked_status(PDO $pdo): void
 }
 
 ensure_column($pdo, 'USER', 'deleted_at');
+ensure_auth_tokens_tables($pdo);
 
 $action = strtolower((string) ($_GET['action'] ?? ''));
 
@@ -106,12 +107,19 @@ try {
 
         if (!$user) Response::error('Invalid username/email or password.', 401);
 
-        /* Already locked — stays locked (even with the right password) until an Admin unlocks it */
         if ($user['status'] === 'Locked') {
             locked_response((string) $user['username']);
         }
 
-        /* Other non-active statuses (Suspended, Banned, Pending Verification) */
+        if ($user['status'] === 'Pending Verification') {
+            Response::json([
+                'error' => 'Please verify your email address before signing in. Check your inbox for the confirmation link.',
+                'pending_verification' => true,
+                'email' => (string) $user['email'],
+                'username' => (string) $user['username'],
+            ], 403);
+        }
+
         if ($user['status'] !== 'Active') {
             Response::error('This account is not active and cannot sign in.', 403);
         }
@@ -159,7 +167,7 @@ try {
             $finalWarning = ($failed === LIBROWSE_MAX_FAILED_LOGINS);
             Response::json([
                 'error'         => $finalWarning
-                    ? 'Incorrect password. This was your last allowed attempt — one more incorrect password will lock your account.'
+                    ? 'Incorrect password. This was your last allowed attempt: one more incorrect password will lock your account.'
                     : 'Incorrect password.',
                 'locked'        => false,
                 'attempts_used' => $failed,
@@ -203,7 +211,6 @@ try {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) Response::error('Please provide a valid email address.', 422);
         if (strlen($password) < 8) Response::error('Password must be at least 8 characters long.', 422);
 
-
         $check = $pdo->prepare('SELECT user_id FROM `USER` WHERE username = :username OR LOWER(email) = LOWER(:email) LIMIT 1');
         $check->execute(['username' => $username, 'email' => $email]);
         if ($check->fetch()) Response::error('Username or email is already registered.', 409);
@@ -211,31 +218,273 @@ try {
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $insert = $pdo->prepare(
             "INSERT INTO `USER` (username, email, password_hash, role, status, permission)
-             VALUES (:username, :email, :hash, 'Customer', 'Active', '{}')"
+             VALUES (:username, :email, :hash, 'Customer', 'Pending Verification', '{}')"
         );
         $insert->execute(['username' => $username, 'email' => $email, 'hash' => $hash]);
+        $newUserId = (int) $pdo->lastInsertId();
 
-        $stmt = $pdo->prepare('SELECT user_id, username, email, role, status, permission FROM `USER` WHERE user_id = :id LIMIT 1');
-        $stmt->execute(['id' => (int) $pdo->lastInsertId()]);
-        $user = $stmt->fetch();
-        $token = issue_auth_token($user);
+        $rawToken = bin2hex(random_bytes(32));
+        $tokenHash = hash('sha256', $rawToken);
+        $expiresAt = gmdate('Y-m-d H:i:s', time() + 172800);
+
+        $stmtToken = $pdo->prepare('INSERT INTO `EMAIL_VERIFICATIONS` (user_id, token_hash, expires_at) VALUES (:uid, :thash, :expires)');
+        $stmtToken->execute([
+            'uid'     => $newUserId,
+            'thash'   => $tokenHash,
+            'expires' => $expiresAt,
+        ]);
+
+        $mailRes = send_verification_email($email, $username, $rawToken);
+
         record_activity_log($pdo, [
-            'actor_user_id'   => (int) $user['user_id'],
+            'actor_user_id'   => $newUserId,
             'activity_type'   => 'Account',
             'activity_action' => 'Register',
             'outcome'         => 'Success',
             'page_path'       => '/register.html',
             'details'         => [
-                'role' => $user['role'],
+                'role'     => 'Customer',
+                'status'   => 'Pending Verification',
+                'dev_mode' => $mailRes['dev_mode'] ?? false,
             ],
         ]);
 
         Response::json([
-            'authenticated' => true,
-            'token' => $token,
-            'expires_in' => LIBROWSE_SESSION_TTL,
-            'user' => public_user($user),
+            'registered'            => true,
+            'requires_verification' => true,
+            'message'               => 'Account created successfully. Please check your email to verify your account before signing in.',
+            'user'                  => [
+                'user_id'  => $newUserId,
+                'username' => $username,
+                'email'    => $email,
+                'role'     => 'Customer',
+                'status'   => 'Pending Verification',
+            ],
+            'dev_preview_link'      => $mailRes['dev_preview_link'] ?? null,
         ], 201);
+    }
+
+    if ($action === 'verify-email' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $body = auth_body();
+        $token = trim((string) ($body['token'] ?? ''));
+        if ($token === '') {
+            Response::error('Verification token is required.', 422);
+        }
+
+        $tokenHash = hash('sha256', $token);
+        $stmt = $pdo->prepare(
+            'SELECT ev.verification_id, ev.user_id, ev.expires_at, u.username, u.email, u.status
+             FROM `EMAIL_VERIFICATIONS` ev
+             JOIN `USER` u ON u.user_id = ev.user_id
+             WHERE ev.token_hash = :hash
+             ORDER BY ev.verification_id DESC
+             LIMIT 1'
+        );
+        $stmt->execute(['hash' => $tokenHash]);
+        $rec = $stmt->fetch();
+
+        if (!$rec) {
+            Response::error('This verification link is invalid or has already been used.', 400);
+        }
+
+        if (strtotime((string) $rec['expires_at']) < time()) {
+            $pdo->prepare('DELETE FROM `EMAIL_VERIFICATIONS` WHERE verification_id = :id')
+                ->execute(['id' => $rec['verification_id']]);
+            Response::error('This verification link has expired. Please request a new verification email.', 400);
+        }
+
+        $uid = (int) $rec['user_id'];
+        $pdo->prepare("UPDATE `USER` SET status = 'Active' WHERE user_id = :uid AND status = 'Pending Verification'")
+            ->execute(['uid' => $uid]);
+        $pdo->prepare('DELETE FROM `EMAIL_VERIFICATIONS` WHERE user_id = :uid')
+            ->execute(['uid' => $uid]);
+
+        record_activity_log($pdo, [
+            'actor_user_id'   => $uid,
+            'activity_type'   => 'Account',
+            'activity_action' => 'VerifyEmail',
+            'outcome'         => 'Success',
+            'page_path'       => '/verify-email.html',
+            'details'         => ['email' => $rec['email']],
+        ]);
+
+        Response::json([
+            'verified' => true,
+            'message'  => 'Your email address has been verified successfully. You can now sign in.',
+        ]);
+    }
+
+    if ($action === 'resend-verification' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $body = auth_body();
+        $identifier = trim((string) ($body['identifier'] ?? $body['email'] ?? ''));
+        if ($identifier === '') {
+            Response::error('Email address or username is required.', 422);
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT user_id, username, email, status FROM `USER`
+             WHERE deleted_at IS NULL AND (username = :u OR LOWER(email) = LOWER(:e))
+             LIMIT 1'
+        );
+        $stmt->execute(['u' => $identifier, 'e' => $identifier]);
+        $user = $stmt->fetch();
+
+        $mailRes = null;
+        if ($user && $user['status'] === 'Pending Verification') {
+            $uid = (int) $user['user_id'];
+            $pdo->prepare('DELETE FROM `EMAIL_VERIFICATIONS` WHERE user_id = :uid')->execute(['uid' => $uid]);
+
+            $rawToken = bin2hex(random_bytes(32));
+            $tokenHash = hash('sha256', $rawToken);
+            $expiresAt = gmdate('Y-m-d H:i:s', time() + 172800);
+
+            $ins = $pdo->prepare('INSERT INTO `EMAIL_VERIFICATIONS` (user_id, token_hash, expires_at) VALUES (:uid, :thash, :expires)');
+            $ins->execute(['uid' => $uid, 'thash' => $tokenHash, 'expires' => $expiresAt]);
+
+            $mailRes = send_verification_email((string) $user['email'], (string) $user['username'], $rawToken);
+        }
+
+        Response::json([
+            'message'          => 'If an unverified account matches that information, a verification email has been sent.',
+            'dev_preview_link' => $mailRes['dev_preview_link'] ?? null,
+        ]);
+    }
+
+    if ($action === 'forgot-password' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $body = auth_body();
+        $identifier = trim((string) ($body['identifier'] ?? $body['email'] ?? ''));
+        if ($identifier === '') {
+            Response::error('Email address or username is required.', 422);
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT user_id, username, email, status FROM `USER`
+             WHERE deleted_at IS NULL AND (username = :u OR LOWER(email) = LOWER(:e))
+             LIMIT 1'
+        );
+        $stmt->execute(['u' => $identifier, 'e' => $identifier]);
+        $user = $stmt->fetch();
+
+        $mailRes = null;
+        if ($user) {
+            $uid = (int) $user['user_id'];
+            $pdo->prepare('UPDATE `PASSWORD_RESETS` SET used_at = UTC_TIMESTAMP() WHERE user_id = :uid AND used_at IS NULL')
+                ->execute(['uid' => $uid]);
+
+            $rawToken = bin2hex(random_bytes(32));
+            $tokenHash = hash('sha256', $rawToken);
+            $expiresAt = gmdate('Y-m-d H:i:s', time() + 3600);
+
+            $ins = $pdo->prepare('INSERT INTO `PASSWORD_RESETS` (user_id, token_hash, expires_at) VALUES (:uid, :thash, :expires)');
+            $ins->execute(['uid' => $uid, 'thash' => $tokenHash, 'expires' => $expiresAt]);
+
+            $mailRes = send_password_reset_email((string) $user['email'], (string) $user['username'], $rawToken);
+
+            record_activity_log($pdo, [
+                'actor_user_id'   => $uid,
+                'activity_type'   => 'Account',
+                'activity_action' => 'RequestPasswordReset',
+                'outcome'         => 'Success',
+                'page_path'       => '/forgot-password.html',
+                'details'         => ['dev_mode' => $mailRes['dev_mode'] ?? false],
+            ]);
+        }
+
+        Response::json([
+            'message'          => 'If an account exists with that email or username, a password reset link has been sent. Please check your inbox.',
+            'dev_preview_link' => $mailRes['dev_preview_link'] ?? null,
+        ]);
+    }
+
+    if ($action === 'verify-reset-token' && in_array($_SERVER['REQUEST_METHOD'], ['GET', 'POST'], true)) {
+        $body = auth_body();
+        $token = trim((string) ($_GET['token'] ?? $body['token'] ?? ''));
+        if ($token === '') {
+            Response::error('Reset token is required.', 422);
+        }
+
+        $tokenHash = hash('sha256', $token);
+        $stmt = $pdo->prepare(
+            'SELECT pr.reset_id, pr.user_id, pr.expires_at, pr.used_at, u.username
+             FROM `PASSWORD_RESETS` pr
+             JOIN `USER` u ON u.user_id = pr.user_id
+             WHERE pr.token_hash = :hash
+             LIMIT 1'
+        );
+        $stmt->execute(['hash' => $tokenHash]);
+        $rec = $stmt->fetch();
+
+        if (!$rec || $rec['used_at'] !== null) {
+            Response::error('This password reset link is invalid or has already been used.', 400);
+        }
+
+        if (strtotime((string) $rec['expires_at']) < time()) {
+            Response::error('This password reset link has expired. Please request a new one.', 400);
+        }
+
+        Response::json([
+            'valid'    => true,
+            'username' => $rec['username'],
+        ]);
+    }
+
+    if ($action === 'reset-password' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $body = auth_body();
+        $token = trim((string) ($body['token'] ?? ''));
+        $password = (string) ($body['password'] ?? '');
+
+        if ($token === '') Response::error('Reset token is required.', 422);
+        if (strlen($password) < 8) Response::error('Password must be at least 8 characters long.', 422);
+
+        $tokenHash = hash('sha256', $token);
+        $stmt = $pdo->prepare(
+            'SELECT pr.reset_id, pr.user_id, pr.expires_at, pr.used_at, u.username, u.status
+             FROM `PASSWORD_RESETS` pr
+             JOIN `USER` u ON u.user_id = pr.user_id
+             WHERE pr.token_hash = :hash
+             LIMIT 1'
+        );
+        $stmt->execute(['hash' => $tokenHash]);
+        $rec = $stmt->fetch();
+
+        if (!$rec || $rec['used_at'] !== null) {
+            Response::error('This password reset link is invalid or has already been used.', 400);
+        }
+
+        if (strtotime((string) $rec['expires_at']) < time()) {
+            Response::error('This password reset link has expired. Please request a new one.', 400);
+        }
+
+        $uid = (int) $rec['user_id'];
+        $newHash = password_hash($password, PASSWORD_DEFAULT);
+
+        $pdo->prepare('UPDATE `USER` SET password_hash = :hash WHERE user_id = :uid')
+            ->execute(['hash' => $newHash, 'uid' => $uid]);
+
+        if ($rec['status'] === 'Locked') {
+            $pdo->prepare("UPDATE `USER` SET status = 'Active' WHERE user_id = :uid")->execute(['uid' => $uid]);
+        }
+        $pdo->prepare('UPDATE `LOGIN_ATTEMPTS` SET cleared_at = UTC_TIMESTAMP() WHERE user_id = :uid AND cleared_at IS NULL')
+            ->execute(['uid' => $uid]);
+
+        $pdo->prepare('UPDATE `PASSWORD_RESETS` SET used_at = UTC_TIMESTAMP() WHERE reset_id = :rid')
+            ->execute(['rid' => $rec['reset_id']]);
+
+        $pdo->prepare('UPDATE `LIBROWSE_SESSIONS` SET revoked_at = UTC_TIMESTAMP() WHERE user_id = :uid AND revoked_at IS NULL')
+            ->execute(['uid' => $uid]);
+
+        record_activity_log($pdo, [
+            'actor_user_id'   => $uid,
+            'activity_type'   => 'Account',
+            'activity_action' => 'ResetPassword',
+            'outcome'         => 'Success',
+            'page_path'       => '/reset-password.html',
+        ]);
+
+        Response::json([
+            'success' => true,
+            'message' => 'Password reset successfully. You can now sign in with your new password.',
+        ]);
     }
 
     if ($action === 'validate' && $_SERVER['REQUEST_METHOD'] === 'GET') {
