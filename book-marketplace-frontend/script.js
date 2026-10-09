@@ -759,7 +759,7 @@ function filterBooks() {
             matchesCondition = String(listing.condition || "").toLowerCase() === condition.toLowerCase();
         }
 
-        /* 4. Category Matching (matches any checked category) */
+        /* 4. Category Matching (completely filters out books with unchecked categories) */
         let matchesCategory = true;
         if (selectedCategoryIds.length > 0) {
             const bookCatIds = [];
@@ -769,10 +769,14 @@ function filterBooks() {
             if (book && book.category_id) {
                 bookCatIds.push(book.category_id);
             }
-            const numericBookCatIds = bookCatIds.map(Number);
-            matchesCategory = selectedCategoryIds.some(function (selectedId) {
-                return numericBookCatIds.includes(Number(selectedId));
-            });
+            const numericBookCatIds = Array.from(new Set(bookCatIds.map(Number)));
+            if (numericBookCatIds.length === 0) {
+                matchesCategory = false;
+            } else {
+                matchesCategory = numericBookCatIds.every(function (bookCatId) {
+                    return selectedCategoryIds.includes(bookCatId);
+                });
+            }
         }
 
         return (

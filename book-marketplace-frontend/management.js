@@ -534,6 +534,27 @@ function getBookCategoryIds() {
         .map(el => Number(el.value));
 }
 
+function getBooksFilterCategoryIds() {
+    return Array.from(document.querySelectorAll('input[name="filter_book_category_ids"]:checked'))
+        .map(el => Number(el.value));
+}
+
+function renderBooksFilterCategories() {
+    const host = document.getElementById("books-category-filter");
+    if (!host) return;
+    const currentChecked = getBooksFilterCategoryIds();
+    host.innerHTML = (managementState.categories || []).map(c => `
+        <label>
+            <input type="checkbox" name="filter_book_category_ids" value="${c.category_id}" ${currentChecked.includes(Number(c.category_id)) ? "checked" : ""}>
+            ${mgEscape(c.category_name)}
+        </label>
+    `).join("") || `<span class="muted">No categories available.</span>`;
+
+    host.querySelectorAll('input[name="filter_book_category_ids"]').forEach(input => {
+        input.addEventListener("change", renderBooksTable);
+    });
+}
+
 function resetBookForm() {
     managementState.editingBookId = null;
     document.getElementById("book-form-title").textContent = "Add catalog book";
@@ -611,8 +632,27 @@ function renderBooksTable() {
 
     const search = (document.getElementById("books-search")?.value || "").toLowerCase().trim();
     const sort = document.getElementById("books-sort")?.value || "newest";
+    const selectedCategoryIds = getBooksFilterCategoryIds();
 
     let books = (managementState.books || []).filter(book => {
+        if (selectedCategoryIds.length > 0) {
+            const rawCatIds = (book.category_ids && book.category_ids.length > 0)
+                ? book.category_ids
+                : (book.category_id ? [book.category_id] : []);
+            const numericBookCatIds = Array.from(new Set(rawCatIds.map(Number)));
+
+            // If the book has no categories, it cannot match any category filter.
+            // If it has categories, every category of the book must be among the checked categories
+            // (completely filter out the unchecked).
+            if (numericBookCatIds.length === 0) {
+                return false;
+            }
+            const allChecked = numericBookCatIds.every(id => selectedCategoryIds.includes(id));
+            if (!allChecked) {
+                return false;
+            }
+        }
+
         if (!search) return true;
         const catNames = (book.category_ids || [book.category_id]).map(id => managementState.categories.find(c => Number(c.category_id) === Number(id))?.category_name || "").join(" ");
         const adminName = map[book.managed_by_admin_id]?.username || "";
@@ -1216,6 +1256,7 @@ function refreshRenderedData() {
     renderDashboardStats();
     renderCategoryStats();
     renderUsersTable();
+    renderBooksFilterCategories();
     renderBooksTable();
     renderCategoriesTable();
     fillCategoryOptions(managementState.editingBookId ? [] : []);
