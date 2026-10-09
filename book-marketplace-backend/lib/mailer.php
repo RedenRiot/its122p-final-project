@@ -14,6 +14,12 @@ function resolve_app_url(): string
         return rtrim(trim($envUrl), '/');
     }
 
+    $vercelProd = getenv('VERCEL_PROJECT_PRODUCTION_URL') ?: getenv('VERCEL_URL');
+    if ($vercelProd !== false && trim($vercelProd) !== '') {
+        $cleanVercel = trim($vercelProd);
+        return str_starts_with($cleanVercel, 'http') ? rtrim($cleanVercel, '/') : 'https://' . rtrim($cleanVercel, '/');
+    }
+
     $origin = trim((string) ($_SERVER['HTTP_ORIGIN'] ?? ''));
     if ($origin !== '' && preg_match('#^https?://[^/]+$#i', $origin)) {
         return rtrim($origin, '/');
