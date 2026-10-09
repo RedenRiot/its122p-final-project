@@ -355,7 +355,7 @@ try {
         ]);
     }
 
-    if ($action === 'forgot-password' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (($action === 'forgot-password' || $action === 'forgot_password') && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $body = auth_body();
         $identifier = trim((string) ($body['identifier'] ?? $body['email'] ?? ''));
         if ($identifier === '') {
