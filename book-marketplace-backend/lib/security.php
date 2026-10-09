@@ -67,6 +67,40 @@ function ensure_auth_tokens_tables(PDO $pdo): void
     } catch (PDOException $e) {
         // Table may already exist
     }
+
+    ensure_password_history_table($pdo);
+}
+
+function ensure_password_history_table(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `PASSWORD_HISTORY` (
+            `history_id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+            `user_id` INT UNSIGNED NOT NULL,
+            `password_hash` VARCHAR(255) NOT NULL,
+            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (`history_id`),
+            INDEX `idx_ph_user_created` (`user_id`, `created_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (PDOException $e) {
+        // Table may already exist
+    }
+}
+
+function record_password_history(PDO $pdo, int $userId, string $passwordHash, ?string $createdAt = null): void
+{
+    ensure_password_history_table($pdo);
+    $createdAtSql = $createdAt ?: gmdate('Y-m-d H:i:s');
+    $stmt = $pdo->prepare("INSERT INTO `PASSWORD_HISTORY` (user_id, password_hash, created_at) VALUES (:uid, :hash, :created)");
+    $stmt->execute([
+        'uid' => $userId,
+        'hash' => $passwordHash,
+        'created' => $createdAtSql,
+    ]);
 }
 
 function issue_auth_token(array $user): string

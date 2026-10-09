@@ -422,6 +422,7 @@ body.management-body {
 
 @media (max-width: 520px) {
     .management-grid.cards-4 { grid-template-columns: 1fr; }
+    .management-toolbar .management-field { min-width: 100%; }
 }
 
 .unlock-request-cell { display: flex; flex-direction: column; gap: 4px; max-width: 320px; font-size: 13px; }

@@ -51,6 +51,25 @@
 
         <section class="management-section" data-section="overview">
             <div id="overview-stats" class="management-grid cards-4"></div>
+            <div class="management-panel" id="category-stats-panel">
+                <h3>Category Statistics</h3>
+                <p class="helper">Platform metrics showing the number of catalog books, active listings, and completed sales across each category.</p>
+                <div class="management-table-wrap">
+                    <table class="management-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Catalog Titles</th>
+                                <th>Total Listed</th>
+                                <th>Currently Available</th>
+                                <th>Books Sold</th>
+                                <th>Books Traded</th>
+                            </tr>
+                        </thead>
+                        <tbody id="category-stats-body"></tbody>
+                    </table>
+                </div>
+            </div>
             <div class="management-panel">
                 <h3>Administrator controls</h3>
                 <p class="helper">
@@ -68,6 +87,15 @@
                     <div class="management-field grow">
                         <label for="users-search">Search users</label>
                         <input id="users-search" type="search" placeholder="Username, email, role, or status">
+                    </div>
+                    <div class="management-field">
+                        <label for="users-sort">Sort users</label>
+                        <select id="users-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Username)</option>
+                            <option value="za">Z to A (Username)</option>
+                        </select>
                     </div>
                     <button class="management-btn" type="button" onclick="loadAllUsers().then(renderUsersTable)">Refresh</button>
                 </div>
@@ -117,6 +145,21 @@
 
             <div class="management-panel">
                 <h3>Catalog Records</h3>
+                <div class="management-toolbar">
+                    <div class="management-field grow">
+                        <label for="books-search">Search catalog</label>
+                        <input id="books-search" type="search" placeholder="Title, author, ISBN, or category">
+                    </div>
+                    <div class="management-field">
+                        <label for="books-sort">Sort catalog</label>
+                        <select id="books-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Title)</option>
+                            <option value="za">Z to A (Title)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="management-table-wrap">
                     <table class="management-table">
                         <thead><tr><th>ID</th><th>Title</th><th>Author</th><th>ISBN</th><th>Categories</th><th>Managed By</th><th>Actions</th></tr></thead>
@@ -130,6 +173,21 @@
             <div class="management-panel">
                 <h3>User Book Listings</h3>
                 <p class="helper">Monitor listings created by customers and change listing status when moderation requires it.</p>
+                <div class="management-toolbar">
+                    <div class="management-field grow">
+                        <label for="listings-search">Search listings</label>
+                        <input id="listings-search" type="search" placeholder="Book title, seller, condition, type, or status">
+                    </div>
+                    <div class="management-field">
+                        <label for="listings-sort">Sort listings</label>
+                        <select id="listings-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Book Title)</option>
+                            <option value="za">Z to A (Book Title)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="management-table-wrap">
                     <table class="management-table">
                         <thead><tr><th>Inventory</th><th>Book</th><th>Seller</th><th>Type</th><th>Condition</th><th>Price</th><th>Status</th><th>Listed</th><th>Actions</th></tr></thead>
@@ -162,9 +220,24 @@
             </div>
 
             <div class="management-panel">
+                <div class="management-toolbar">
+                    <div class="management-field grow">
+                        <label for="categories-search">Search categories</label>
+                        <input id="categories-search" type="search" placeholder="Category name or description">
+                    </div>
+                    <div class="management-field">
+                        <label for="categories-sort">Sort categories</label>
+                        <select id="categories-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Name)</option>
+                            <option value="za">Z to A (Name)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="management-table-wrap">
                     <table class="management-table">
-                        <thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Books</th><th>Actions</th></tr></thead>
+                        <thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Catalog Books</th><th>Total Listed</th><th>Sold</th><th>Actions</th></tr></thead>
                         <tbody id="categories-body"></tbody>
                     </table>
                 </div>
@@ -175,6 +248,21 @@
             <div class="management-panel">
                 <h3>Reports and Customer Forms</h3>
                 <p class="helper">Review customer submissions, verification forms, seller applications, user violations, listing disputes, and feedback.</p>
+                <div class="management-toolbar">
+                    <div class="management-field grow">
+                        <label for="reports-search">Search reports &amp; forms</label>
+                        <input id="reports-search" type="search" placeholder="Submitter, category, related entity, or status">
+                    </div>
+                    <div class="management-field">
+                        <label for="reports-sort">Sort reports</label>
+                        <select id="reports-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Category)</option>
+                            <option value="za">Z to A (Category)</option>
+                        </select>
+                    </div>
+                </div>
                 <label style="font-size:13px;font-weight:700;">
                     <input id="reports-forms-only" type="checkbox"> Show verification/seller forms only
                 </label>
@@ -191,6 +279,21 @@
             <div class="management-panel">
                 <h3>Transactions</h3>
                 <p class="helper">Monitor purchase/trade transactions and update their operational status.</p>
+                <div class="management-toolbar">
+                    <div class="management-field grow">
+                        <label for="transactions-search">Search transactions</label>
+                        <input id="transactions-search" type="search" placeholder="Buyer, book title, type, status, or staff">
+                    </div>
+                    <div class="management-field">
+                        <label for="transactions-sort">Sort transactions</label>
+                        <select id="transactions-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Book Title)</option>
+                            <option value="za">Z to A (Book Title)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="management-table-wrap">
                     <table class="management-table">
                         <thead><tr><th>ID</th><th>Buyer</th><th>Book</th><th>Type</th><th>Amount</th><th>Current Status</th><th>Staff</th><th>Created</th><th>New Status</th><th>Actions</th></tr></thead>
@@ -204,6 +307,21 @@
             <div class="management-panel">
                 <h3>Refund Requests</h3>
                 <p class="helper">Administrative monitoring view. Refund decisions are assigned to Staff according to the project requirements.</p>
+                <div class="management-toolbar">
+                    <div class="management-field grow">
+                        <label for="refunds-search">Search refunds</label>
+                        <input id="refunds-search" type="search" placeholder="Customer, transaction #, reason, or status">
+                    </div>
+                    <div class="management-field">
+                        <label for="refunds-sort">Sort refunds</label>
+                        <select id="refunds-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Customer)</option>
+                            <option value="za">Z to A (Customer)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="management-table-wrap">
                     <table class="management-table">
                         <thead><tr><th>ID</th><th>Transaction</th><th>Customer</th><th>Reason</th><th>Requested</th><th>Status</th><th>Processed By</th><th>Review</th></tr></thead>
@@ -236,6 +354,21 @@
             </div>
 
             <div class="management-panel">
+                <div class="management-toolbar">
+                    <div class="management-field grow">
+                        <label for="records-search">Search records</label>
+                        <input id="records-search" type="search" placeholder="Record type, details, or admin">
+                    </div>
+                    <div class="management-field">
+                        <label for="records-sort">Sort records</label>
+                        <select id="records-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Record Type)</option>
+                            <option value="za">Z to A (Record Type)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="management-table-wrap">
                     <table class="management-table">
                         <thead><tr><th>ID</th><th>Admin</th><th>Type</th><th>Details</th><th>Created</th><th>Actions</th></tr></thead>
@@ -249,6 +382,21 @@
             <div class="management-panel">
                 <h3>Activity and Visit Logs</h3>
                 <p class="helper">View page visits, login/logout events, and trade outcomes. Successful and failed actions are recorded with their reasons when available.</p>
+                <div class="management-toolbar">
+                    <div class="management-field grow">
+                        <label for="activity-logs-search">Search activity logs</label>
+                        <input id="activity-logs-search" type="search" placeholder="Actor, action, outcome, reason, or target">
+                    </div>
+                    <div class="management-field">
+                        <label for="activity-logs-sort">Sort activity logs</label>
+                        <select id="activity-logs-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Action)</option>
+                            <option value="za">Z to A (Action)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="management-table-wrap">
                     <table class="management-table">
                         <thead><tr><th>ID</th><th>Actor</th><th>Type</th><th>Action</th><th>Outcome</th><th>Reason</th><th>Target</th><th>Details</th><th>Created</th></tr></thead>

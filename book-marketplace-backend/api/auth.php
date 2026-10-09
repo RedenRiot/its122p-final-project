@@ -226,6 +226,7 @@ try {
         );
         $insert->execute(['username' => $username, 'email' => $email, 'hash' => $hash]);
         $newUserId = (int) $pdo->lastInsertId();
+        record_password_history($pdo, $newUserId, $hash);
 
         $rawToken = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $rawToken);
@@ -459,10 +460,51 @@ try {
         }
 
         $uid = (int) $rec['user_id'];
+
+        $userStmt = $pdo->prepare('SELECT user_id, password_hash, created_at FROM `USER` WHERE user_id = :uid LIMIT 1');
+        $userStmt->execute(['uid' => $uid]);
+        $currUser = $userStmt->fetch();
+
+        if ($currUser && !empty($currUser['password_hash'])) {
+            if (password_verify($password, $currUser['password_hash'])) {
+                Response::error('You cannot reuse your current password or any password used within the last 6 months.', 422);
+            }
+        }
+
+        ensure_password_history_table($pdo);
+        $histStmt = $pdo->prepare(
+            'SELECT password_hash FROM `PASSWORD_HISTORY`
+             WHERE user_id = :uid AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 6 MONTH)
+             ORDER BY created_at DESC'
+        );
+        $histStmt->execute(['uid' => $uid]);
+        $history = $histStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($history as $h) {
+            if (!empty($h['password_hash']) && password_verify($password, $h['password_hash'])) {
+                Response::error('You cannot reuse a password registered or used within the last 6 months. Please choose a different password.', 422);
+            }
+        }
+
+        if ($currUser && !empty($currUser['password_hash'])) {
+            $alreadyArchived = false;
+            foreach ($history as $h) {
+                if ($h['password_hash'] === $currUser['password_hash']) {
+                    $alreadyArchived = true;
+                    break;
+                }
+            }
+            if (!$alreadyArchived) {
+                record_password_history($pdo, $uid, $currUser['password_hash'], $currUser['created_at'] ?? null);
+            }
+        }
+
         $newHash = password_hash($password, PASSWORD_DEFAULT);
 
         $pdo->prepare('UPDATE `USER` SET password_hash = :hash WHERE user_id = :uid')
             ->execute(['hash' => $newHash, 'uid' => $uid]);
+
+        record_password_history($pdo, $uid, $newHash, gmdate('Y-m-d H:i:s'));
 
         if ($rec['status'] === 'Locked') {
             $pdo->prepare("UPDATE `USER` SET status = 'Active' WHERE user_id = :uid")->execute(['uid' => $uid]);

@@ -47,6 +47,25 @@
 
         <section class="management-section" data-section="overview">
             <div id="overview-stats" class="management-grid cards-4"></div>
+            <div class="management-panel" id="category-stats-panel">
+                <h3>Category Statistics</h3>
+                <p class="helper">Platform metrics showing the number of catalog books, active listings, and completed sales across each category.</p>
+                <div class="management-table-wrap">
+                    <table class="management-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Catalog Titles</th>
+                                <th>Total Listed</th>
+                                <th>Currently Available</th>
+                                <th>Books Sold</th>
+                                <th>Books Traded</th>
+                            </tr>
+                        </thead>
+                        <tbody id="category-stats-body"></tbody>
+                    </table>
+                </div>
+            </div>
             <div class="management-panel">
                 <h3>Staff responsibilities</h3>
                 <p class="helper">
@@ -65,6 +84,15 @@
                         <label for="users-search">Search customers</label>
                         <input id="users-search" type="search" placeholder="Username, email, or status">
                     </div>
+                    <div class="management-field">
+                        <label for="users-sort">Sort customers</label>
+                        <select id="users-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Username)</option>
+                            <option value="za">Z to A (Username)</option>
+                        </select>
+                    </div>
                     <button class="management-btn" type="button" onclick="loadAllUsers().then(renderUsersTable)">Refresh</button>
                 </div>
                 <div class="management-table-wrap">
@@ -80,6 +108,21 @@
             <div class="management-panel">
                 <h3>Forms and Reports</h3>
                 <p class="helper">Review verification forms, seller applications, user violations, listing disputes, and customer feedback.</p>
+                <div class="management-toolbar">
+                    <div class="management-field grow">
+                        <label for="reports-search">Search reports &amp; forms</label>
+                        <input id="reports-search" type="search" placeholder="Submitter, category, related entity, or status">
+                    </div>
+                    <div class="management-field">
+                        <label for="reports-sort">Sort reports</label>
+                        <select id="reports-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Category)</option>
+                            <option value="za">Z to A (Category)</option>
+                        </select>
+                    </div>
+                </div>
                 <label style="font-size:13px;font-weight:700;">
                     <input id="reports-forms-only" type="checkbox"> Show verification/seller forms only
                 </label>
@@ -96,6 +139,21 @@
             <div class="management-panel">
                 <h3>Customer Transactions</h3>
                 <p class="helper">Update purchase and trade transaction statuses and record the Staff member managing the transaction.</p>
+                <div class="management-toolbar">
+                    <div class="management-field grow">
+                        <label for="transactions-search">Search transactions</label>
+                        <input id="transactions-search" type="search" placeholder="Buyer, book title, type, status, or staff">
+                    </div>
+                    <div class="management-field">
+                        <label for="transactions-sort">Sort transactions</label>
+                        <select id="transactions-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Book Title)</option>
+                            <option value="za">Z to A (Book Title)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="management-table-wrap">
                     <table class="management-table">
                         <thead><tr><th>ID</th><th>Buyer</th><th>Book</th><th>Type</th><th>Amount</th><th>Current Status</th><th>Staff</th><th>Created</th><th>New Status</th><th>Actions</th></tr></thead>
@@ -109,6 +167,21 @@
             <div class="management-panel">
                 <h3>Refund Requests</h3>
                 <p class="helper">Review customer refund requests and approve or reject them.</p>
+                <div class="management-toolbar">
+                    <div class="management-field grow">
+                        <label for="refunds-search">Search refunds</label>
+                        <input id="refunds-search" type="search" placeholder="Customer, transaction #, reason, or status">
+                    </div>
+                    <div class="management-field">
+                        <label for="refunds-sort">Sort refunds</label>
+                        <select id="refunds-sort">
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                            <option value="az">A to Z (Customer)</option>
+                            <option value="za">Z to A (Customer)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="management-table-wrap">
                     <table class="management-table">
                         <thead><tr><th>ID</th><th>Transaction</th><th>Customer</th><th>Reason</th><th>Requested</th><th>Status</th><th>Processed By</th><th>Decision</th></tr></thead>

@@ -74,7 +74,11 @@ try {
         unset($body['password'], $body['password_hash']);
         $body['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
         try {
-            Response::json($crud->create($body), 201);
+            $created = $crud->create($body);
+            if (!empty($created['user_id'])) {
+                record_password_history($pdo, (int) $created['user_id'], $body['password_hash']);
+            }
+            Response::json($created, 201);
         } catch (InvalidArgumentException $e) {
             Response::error($e->getMessage(), 422);
         }

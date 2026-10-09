@@ -48,6 +48,7 @@ if ($success) {
     $sql = <<<SQL
 DROP TABLE IF EXISTS `EMAIL_VERIFICATIONS`;
 DROP TABLE IF EXISTS `PASSWORD_RESETS`;
+DROP TABLE IF EXISTS `PASSWORD_HISTORY`;
 DROP TABLE IF EXISTS `SYSTEM_RECORDS`;
 DROP TABLE IF EXISTS `REPORTS`;
 DROP TABLE IF EXISTS `REFUND_REQUEST`;
@@ -212,13 +213,23 @@ CREATE TABLE `PASSWORD_RESETS` (
   INDEX `idx_pr_token` (`token_hash`),
   CONSTRAINT `fk_pr_user` FOREIGN KEY (`user_id`) REFERENCES `USER`(`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `PASSWORD_HISTORY` (
+  `history_id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `password_hash` VARCHAR(255) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`history_id`),
+  INDEX `idx_ph_user_created` (`user_id`, `created_at`),
+  CONSTRAINT `fk_ph_user` FOREIGN KEY (`user_id`) REFERENCES `USER`(`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 SQL;
 
     try {
         foreach (array_filter(array_map('trim', explode(';', $sql))) as $statement) {
             if ($statement !== '') $pdo->exec($statement);
         }
-        $steps[] = step('Created all tables', true, 'USER, BOOK_CATEGORIES, BOOKS_CATALOG, BOOK_CATEGORY_MAP, USER_BOOKS, TRANSACTIONS, REFUND_REQUEST, REPORTS, SYSTEM_RECORDS, ACTIVITY_LOGS, EMAIL_VERIFICATIONS, PASSWORD_RESETS');
+        $steps[] = step('Created all tables', true, 'USER, BOOK_CATEGORIES, BOOKS_CATALOG, BOOK_CATEGORY_MAP, USER_BOOKS, TRANSACTIONS, REFUND_REQUEST, REPORTS, SYSTEM_RECORDS, ACTIVITY_LOGS, EMAIL_VERIFICATIONS, PASSWORD_RESETS, PASSWORD_HISTORY');
     } catch (PDOException $e) {
         $steps[] = step('Created all tables', false, $e->getMessage());
         $success = false;

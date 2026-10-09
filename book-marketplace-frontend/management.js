@@ -133,24 +133,134 @@ function renderSession() {
 }
 
 function formatDate(value) {
-    if (!value) return "—";
+    if (!value) return "-";
     const parsed = new Date(String(value).replace(" ", "T"));
     if (Number.isNaN(parsed.getTime())) return value;
     return parsed.toLocaleString();
 }
 
 function formatMoney(value) {
-    if (value === null || value === undefined || value === "") return "—";
+    if (value === null || value === undefined || value === "") return "-";
     return `₱${Number(value).toFixed(2)}`;
 }
 
 function badge(value) {
-    const text = String(value ?? "—");
+    const text = String(value ?? "-");
     let cls = "muted";
     if (["Active","Accepted","Approved","Completed","Resolved"].includes(text)) cls = "success";
     if (["Pending","Pending Verification","Under_Review","In_transaction","Disputed"].includes(text)) cls = "warning";
     if (["Suspended","Banned","Locked","Rejected","Cancelled","Removed","Dismissed"].includes(text)) cls = "danger";
     return `<span class="management-badge ${cls}">${mgEscape(text.replaceAll("_"," "))}</span>`;
+}
+
+function sortEntries(items, sortKey, textExtractor, idOrDateExtractor) {
+    const list = [...items];
+    switch (sortKey) {
+        case "az":
+            return list.sort((a, b) => String(textExtractor(a) || "").localeCompare(String(textExtractor(b) || ""), undefined, { numeric: true, sensitivity: "base" }));
+        case "za":
+            return list.sort((a, b) => String(textExtractor(b) || "").localeCompare(String(textExtractor(a) || ""), undefined, { numeric: true, sensitivity: "base" }));
+        case "oldest":
+            return list.sort((a, b) => {
+                const valA = idOrDateExtractor(a);
+                const valB = idOrDateExtractor(b);
+                if (typeof valA === "number" && typeof valB === "number") return valA - valB;
+                const timeA = new Date(valA || 0).getTime();
+                const timeB = new Date(valB || 0).getTime();
+                if (!Number.isNaN(timeA) && !Number.isNaN(timeB)) return timeA - timeB;
+                return String(valA || "").localeCompare(String(valB || ""));
+            });
+        case "newest":
+        default:
+            return list.sort((a, b) => {
+                const valA = idOrDateExtractor(a);
+                const valB = idOrDateExtractor(b);
+                if (typeof valA === "number" && typeof valB === "number") return valB - valA;
+                const timeA = new Date(valA || 0).getTime();
+                const timeB = new Date(valB || 0).getTime();
+                if (!Number.isNaN(timeA) && !Number.isNaN(timeB)) return timeB - timeA;
+                return String(valB || "").localeCompare(String(valA || ""));
+            });
+    }
+}
+
+function renderCategoryStats() {
+    const tbody = document.getElementById("category-stats-body");
+    if (!tbody) return;
+
+    if (!managementState.categories || !managementState.categories.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="management-empty">No category data available yet.</td></tr>`;
+        return;
+    }
+
+    const catMap = {};
+    managementState.categories.forEach(c => {
+        catMap[c.category_id] = {
+            id: c.category_id,
+            name: c.category_name,
+            catalogBooks: 0,
+            totalListed: 0,
+            available: 0,
+            sold: 0,
+            traded: 0
+        };
+    });
+
+    const bookToCats = {};
+    (managementState.books || []).forEach(b => {
+        const catIds = (b.category_ids && b.category_ids.length ? b.category_ids : [b.category_id]).map(Number);
+        bookToCats[b.book_id] = catIds;
+        catIds.forEach(cid => {
+            if (catMap[cid]) catMap[cid].catalogBooks++;
+        });
+    });
+
+    (managementState.listings || []).forEach(l => {
+        const cids = bookToCats[l.book_id] || [];
+        cids.forEach(cid => {
+            if (catMap[cid]) {
+                catMap[cid].totalListed++;
+                if (l.status === "Available") catMap[cid].available++;
+                else if (l.status === "Sold") catMap[cid].sold++;
+                else if (l.status === "Traded") catMap[cid].traded++;
+            }
+        });
+    });
+
+    const rows = Object.values(catMap);
+    let totalCatalog = 0;
+    let totalListed = 0;
+    let totalAvailable = 0;
+    let totalSold = 0;
+    let totalTraded = 0;
+
+    rows.forEach(r => {
+        totalCatalog += r.catalogBooks;
+        totalListed += r.totalListed;
+        totalAvailable += r.available;
+        totalSold += r.sold;
+        totalTraded += r.traded;
+    });
+
+    tbody.innerHTML = rows.map(r => `
+        <tr>
+            <td><strong>${mgEscape(r.name)}</strong></td>
+            <td>${r.catalogBooks}</td>
+            <td>${r.totalListed}</td>
+            <td>${r.available ? `<span class="management-badge success">${r.available}</span>` : `<span class="muted">0</span>`}</td>
+            <td>${r.sold ? `<span class="management-badge info">${r.sold}</span>` : `<span class="muted">0</span>`}</td>
+            <td>${r.traded ? `<span class="management-badge warning">${r.traded}</span>` : `<span class="muted">0</span>`}</td>
+        </tr>
+    `).join("") + `
+        <tr style="font-weight:700; background: rgba(0,0,0,0.03);">
+            <td>Total Across Categories</td>
+            <td>${totalCatalog}</td>
+            <td>${totalListed}</td>
+            <td>${totalAvailable}</td>
+            <td>${totalSold}</td>
+            <td>${totalTraded}</td>
+        </tr>
+    `;
 }
 
 function selected(a, b) {
@@ -276,14 +386,17 @@ function renderUsersTable() {
     if (!tbody) return;
 
     const search = (document.getElementById("users-search")?.value || "").toLowerCase().trim();
+    const sort = document.getElementById("users-sort")?.value || "newest";
     let users = managementState.users.filter(u => {
         if (managementState.role === "staff" && mgRole(u.role) !== "customer") return false;
         if (!search) return true;
-        return [u.username, u.email, u.role, u.status].some(x => String(x || "").toLowerCase().includes(search));
+        return [u.user_id, u.username, u.email, u.role, u.status].some(x => String(x || "").toLowerCase().includes(search));
     });
 
+    users = sortEntries(users, sort, u => u.username, u => u.user_id);
+
     if (!users.length) {
-        tbody.innerHTML = `<tr><td colspan="8" class="management-empty">No users found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="management-empty">No users found matching your search.</td></tr>`;
         return;
     }
 
@@ -496,12 +609,24 @@ function renderBooksTable() {
     if (!tbody) return;
     const map = userMap();
 
-    if (!managementState.books.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="management-empty">No catalog books found.</td></tr>`;
+    const search = (document.getElementById("books-search")?.value || "").toLowerCase().trim();
+    const sort = document.getElementById("books-sort")?.value || "newest";
+
+    let books = (managementState.books || []).filter(book => {
+        if (!search) return true;
+        const catNames = (book.category_ids || [book.category_id]).map(id => managementState.categories.find(c => Number(c.category_id) === Number(id))?.category_name || "").join(" ");
+        const adminName = map[book.managed_by_admin_id]?.username || "";
+        return [book.book_id, book.title, book.author, book.isbn, catNames, adminName].some(x => String(x || "").toLowerCase().includes(search));
+    });
+
+    books = sortEntries(books, sort, b => b.title, b => b.book_id);
+
+    if (!books.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="management-empty">No catalog books found matching your search.</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = managementState.books.map(book => `
+    tbody.innerHTML = books.map(book => `
         <tr>
             <td>${book.book_id}</td>
             <td><strong>${mgEscape(book.title)}</strong></td>
@@ -591,17 +716,49 @@ async function submitCategoryForm(event) {
 function renderCategoriesTable() {
     const tbody = document.getElementById("categories-body");
     if (!tbody) return;
+
     const bookCounts = {};
-    managementState.books.forEach(book => {
-        (book.category_ids || [book.category_id]).forEach(id => bookCounts[id] = (bookCounts[id] || 0) + 1);
+    const listedCounts = {};
+    const soldCounts = {};
+
+    const bookToCats = {};
+    (managementState.books || []).forEach(book => {
+        const catIds = (book.category_ids && book.category_ids.length ? book.category_ids : [book.category_id]).map(Number);
+        bookToCats[book.book_id] = catIds;
+        catIds.forEach(id => bookCounts[id] = (bookCounts[id] || 0) + 1);
     });
 
-    tbody.innerHTML = managementState.categories.map(c => `
+    (managementState.listings || []).forEach(l => {
+        const cids = bookToCats[l.book_id] || [];
+        cids.forEach(cid => {
+            listedCounts[cid] = (listedCounts[cid] || 0) + 1;
+            if (l.status === "Sold") soldCounts[cid] = (soldCounts[cid] || 0) + 1;
+        });
+    });
+
+    const search = (document.getElementById("categories-search")?.value || "").toLowerCase().trim();
+    const sort = document.getElementById("categories-sort")?.value || "newest";
+
+    let categories = (managementState.categories || []).filter(c => {
+        if (!search) return true;
+        return [c.category_id, c.category_name, c.description].some(x => String(x || "").toLowerCase().includes(search));
+    });
+
+    categories = sortEntries(categories, sort, c => c.category_name, c => c.category_id);
+
+    if (!categories.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="management-empty">No categories found matching your search.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = categories.map(c => `
         <tr>
             <td>${c.category_id}</td>
-            <td>${mgEscape(c.category_name)}</td>
-            <td>${mgEscape(c.description || "—")}</td>
+            <td><strong>${mgEscape(c.category_name)}</strong></td>
+            <td>${mgEscape(c.description || "-")}</td>
             <td>${bookCounts[c.category_id] || 0}</td>
+            <td>${listedCounts[c.category_id] || 0}</td>
+            <td>${soldCounts[c.category_id] ? `<span class="management-badge success">${soldCounts[c.category_id]}</span>` : `<span class="muted">0</span>`}</td>
             <td>
                 <div class="management-actions">
                     <button class="management-btn primary small" onclick="editCategory(${c.category_id})">Edit</button>
@@ -609,7 +766,7 @@ function renderCategoriesTable() {
                 </div>
             </td>
         </tr>
-    `).join("") || `<tr><td colspan="5" class="management-empty">No categories found.</td></tr>`;
+    `).join("");
 }
 
 async function deleteCategory(categoryId) {
@@ -633,10 +790,27 @@ function renderListingsTable() {
     const bm = bookMap();
     const um = userMap();
 
-    tbody.innerHTML = managementState.listings.map(l => `
+    const search = (document.getElementById("listings-search")?.value || "").toLowerCase().trim();
+    const sort = document.getElementById("listings-sort")?.value || "newest";
+
+    let listings = (managementState.listings || []).filter(l => {
+        if (!search) return true;
+        const bookTitle = bm[l.book_id]?.title || "";
+        const seller = um[l.seller_id]?.username || "";
+        return [l.inventory_id, bookTitle, seller, l.listing_type, l.condition, l.price, l.status].some(x => String(x || "").toLowerCase().includes(search));
+    });
+
+    listings = sortEntries(listings, sort, l => bm[l.book_id]?.title || "", l => l.inventory_id);
+
+    if (!listings.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="management-empty">No listings found matching your search.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = listings.map(l => `
         <tr>
             <td>${l.inventory_id}</td>
-            <td>${mgEscape(bm[l.book_id]?.title || `Book #${l.book_id}`)}</td>
+            <td><strong>${mgEscape(bm[l.book_id]?.title || `Book #${l.book_id}`)}</strong></td>
             <td>${mgEscape(um[l.seller_id]?.username || `User #${l.seller_id}`)}</td>
             <td>${mgEscape(l.listing_type)}</td>
             <td>${mgEscape(l.condition)}</td>
@@ -651,7 +825,7 @@ function renderListingsTable() {
                 <button class="management-btn primary small" onclick="saveListing(${l.inventory_id})">Save</button>
             </td>
         </tr>
-    `).join("") || `<tr><td colspan="9" class="management-empty">No listings found.</td></tr>`;
+    `).join("");
 }
 
 async function saveListing(inventoryId) {
@@ -686,10 +860,23 @@ function renderReportsTable() {
     if (!tbody) return;
     const um = userMap();
 
-    let reports = [...managementState.reports];
+    const search = (document.getElementById("reports-search")?.value || "").toLowerCase().trim();
+    const sort = document.getElementById("reports-sort")?.value || "newest";
     const formOnly = document.getElementById("reports-forms-only")?.checked;
-    if (formOnly) {
-        reports = reports.filter(r => ["Verification_Form","Seller_Application"].includes(r.report_category));
+
+    let reports = (managementState.reports || []).filter(r => {
+        if (formOnly && !["Verification_Form","Seller_Application"].includes(r.report_category)) return false;
+        if (!search) return true;
+        const user = um[r.submitted_by_id]?.username || "";
+        const dataStr = typeof r.form_data === "string" ? r.form_data : JSON.stringify(r.form_data || {});
+        return [r.report_id, user, r.report_category, r.related_entity_type, r.status, r.resolution_notes, dataStr].some(x => String(x || "").toLowerCase().includes(search));
+    });
+
+    reports = sortEntries(reports, sort, r => r.report_category || "", r => r.report_id);
+
+    if (!reports.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="management-empty">No reports/forms found matching your search.</td></tr>`;
+        return;
     }
 
     tbody.innerHTML = reports.map(r => {
@@ -728,7 +915,7 @@ function renderReportsTable() {
                 </div>
             </td>
         </tr>`;
-    }).join("") || `<tr><td colspan="9" class="management-empty">No reports/forms found.</td></tr>`;
+    }).join("");
 }
 
 async function saveReport(reportId) {
@@ -754,7 +941,7 @@ async function saveReport(reportId) {
     }
 }
 
-/* Valid next statuses — the server enforces the same rules */
+/* Valid next statuses: the server enforces the same rules */
 const TX_NEXT = {
     Pending:  ["Accepted", "Cancelled", "Disputed"],
     Accepted: ["Completed", "Cancelled", "Disputed"],
@@ -770,18 +957,40 @@ function renderTransactionsTable() {
     const lm = listingMap();
     const bm = bookMap();
 
-    tbody.innerHTML = managementState.transactions.map(t => {
+    const search = (document.getElementById("transactions-search")?.value || "").toLowerCase().trim();
+    const sort = document.getElementById("transactions-sort")?.value || "newest";
+
+    let transactions = (managementState.transactions || []).filter(t => {
+        if (!search) return true;
+        const buyer = um[t.buyer_id]?.username || "";
+        const staff = um[t.managed_by_staff_id]?.username || "";
+        const listing = lm[t.requested_inventory_id];
+        const bookTitle = listing ? (bm[listing.book_id]?.title || "") : "";
+        return [t.transaction_id, buyer, bookTitle, t.transaction_type, t.amount_paid, t.status, staff].some(x => String(x || "").toLowerCase().includes(search));
+    });
+
+    transactions = sortEntries(transactions, sort, t => {
+        const listing = lm[t.requested_inventory_id];
+        return listing ? (bm[listing.book_id]?.title || "") : "";
+    }, t => t.transaction_id);
+
+    if (!transactions.length) {
+        tbody.innerHTML = `<tr><td colspan="10" class="management-empty">No transactions found matching your search.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = transactions.map(t => {
         const listing = lm[t.requested_inventory_id];
         const bookTitle = listing ? (bm[listing.book_id]?.title || `Book #${listing.book_id}`) : `Listing #${t.requested_inventory_id}`;
         return `
         <tr>
             <td>${t.transaction_id}</td>
             <td>${mgEscape(um[t.buyer_id]?.username || `User #${t.buyer_id}`)}</td>
-            <td>${mgEscape(bookTitle)}</td>
+            <td><strong>${mgEscape(bookTitle)}</strong></td>
             <td>${mgEscape(t.transaction_type)}</td>
             <td>${formatMoney(t.amount_paid)}</td>
             <td>${badge(t.status)}</td>
-            <td>${mgEscape(um[t.managed_by_staff_id]?.username || "—")}</td>
+            <td>${mgEscape(um[t.managed_by_staff_id]?.username || "-")}</td>
             <td>${formatDate(t.created_at)}</td>
             <td>
                 <select aria-label="Status for transaction #${t.transaction_id}" id="transaction-status-${t.transaction_id}" ${(TX_NEXT[t.status] || []).length ? "" : "disabled"}>
@@ -790,7 +999,7 @@ function renderTransactionsTable() {
             </td>
             <td>${(TX_NEXT[t.status] || []).length ? `<button class="management-btn primary small" onclick="saveTransaction(${t.transaction_id})">Save</button>` : `<span class="muted">Final</span>`}</td>
         </tr>`;
-    }).join("") || `<tr><td colspan="10" class="management-empty">No transactions found.</td></tr>`;
+    }).join("");
 }
 
 async function saveTransaction(transactionId) {
@@ -816,7 +1025,25 @@ function renderRefundsTable() {
     const tbody = document.getElementById("refunds-body");
     if (!tbody) return;
     const um = userMap();
-    tbody.innerHTML = managementState.refunds.map(r => `
+
+    const search = (document.getElementById("refunds-search")?.value || "").toLowerCase().trim();
+    const sort = document.getElementById("refunds-sort")?.value || "newest";
+
+    let refunds = (managementState.refunds || []).filter(r => {
+        if (!search) return true;
+        const cust = um[r.customer_id]?.username || "";
+        const staff = um[r.processed_by_staff_id]?.username || "";
+        return [r.refund_id, r.transaction_id, cust, r.reason, r.status, staff].some(x => String(x || "").toLowerCase().includes(search));
+    });
+
+    refunds = sortEntries(refunds, sort, r => um[r.customer_id]?.username || "", r => r.refund_id);
+
+    if (!refunds.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="management-empty">No refund requests found matching your search.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = refunds.map(r => `
         <tr>
             <td>${r.refund_id}</td>
             <td>#${r.transaction_id}</td>
@@ -824,7 +1051,7 @@ function renderRefundsTable() {
             <td>${mgEscape(r.reason)}</td>
             <td>${formatDate(r.requested_at)}</td>
             <td>${badge(r.status)}</td>
-            <td>${mgEscape(um[r.processed_by_staff_id]?.username || "—")}</td>
+            <td>${mgEscape(um[r.processed_by_staff_id]?.username || "-")}</td>
             <td>
                 ${managementState.role === "staff" && r.status === "Pending" ? `
                 <select aria-label="Decision for refund #${r.refund_id}" id="refund-status-${r.refund_id}">
@@ -834,7 +1061,7 @@ function renderRefundsTable() {
                 ` : badge(r.status)}
             </td>
         </tr>
-    `).join("") || `<tr><td colspan="8" class="management-empty">No refund requests found.</td></tr>`;
+    `).join("");
 }
 
 async function saveRefund(refundId) {
@@ -858,7 +1085,25 @@ function renderRecordsTable() {
     const tbody = document.getElementById("records-body");
     if (!tbody) return;
     const um = userMap();
-    tbody.innerHTML = managementState.records.map(r => `
+
+    const search = (document.getElementById("records-search")?.value || "").toLowerCase().trim();
+    const sort = document.getElementById("records-sort")?.value || "newest";
+
+    let records = (managementState.records || []).filter(r => {
+        if (!search) return true;
+        const admin = um[r.admin_id]?.username || "";
+        const detailsStr = typeof r.details === "string" ? r.details : JSON.stringify(r.details || {});
+        return [r.record_id, admin, r.record_type, detailsStr].some(x => String(x || "").toLowerCase().includes(search));
+    });
+
+    records = sortEntries(records, sort, r => r.record_type || "", r => r.record_id);
+
+    if (!records.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="management-empty">No system records found matching your search.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = records.map(r => `
         <tr>
             <td>${r.record_id}</td>
             <td>${mgEscape(um[r.admin_id]?.username || `User #${r.admin_id}`)}</td>
@@ -867,7 +1112,7 @@ function renderRecordsTable() {
             <td>${formatDate(r.created_at)}</td>
             <td><button class="management-btn danger small" onclick="deleteRecord(${r.record_id})" title="Soft-delete: hides from view but keeps the audit record">Archive</button></td>
         </tr>
-    `).join("") || `<tr><td colspan="6" class="management-empty">No system records found.</td></tr>`;
+    `).join("");
 }
 
 function renderActivityLogsTable() {
@@ -875,23 +1120,40 @@ function renderActivityLogsTable() {
     if (!tbody) return;
     const um = userMap();
 
-    tbody.innerHTML = managementState.activityLogs.map(log => {
+    const search = (document.getElementById("activity-logs-search")?.value || "").toLowerCase().trim();
+    const sort = document.getElementById("activity-logs-sort")?.value || "newest";
+
+    let logs = (managementState.activityLogs || []).filter(log => {
+        if (!search) return true;
+        const actor = um[log.actor_user_id]?.username || (log.visitor_key ? `Visitor ${log.visitor_key}` : "");
+        const detailsStr = typeof log.details === "string" ? log.details : JSON.stringify(log.details || {});
+        return [log.activity_id, actor, log.activity_type, log.activity_action, log.outcome, log.reason, log.target_type, log.target_id, log.page_path, detailsStr].some(x => String(x || "").toLowerCase().includes(search));
+    });
+
+    logs = sortEntries(logs, sort, log => log.activity_action || "", log => log.activity_id);
+
+    if (!logs.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="management-empty">No activity logs found matching your search.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = logs.map(log => {
         const details = typeof log.details === "string" ? log.details : JSON.stringify(log.details || {});
-        const target = [log.target_type, log.target_id].filter(Boolean).join(" #") || (log.page_path || "—");
+        const target = [log.target_type, log.target_id].filter(Boolean).join(" #") || (log.page_path || "-");
         return `
             <tr>
                 <td>${log.activity_id}</td>
-                <td>${mgEscape(um[log.actor_user_id]?.username || (log.visitor_key ? `Visitor ${log.visitor_key}` : "—"))}</td>
+                <td>${mgEscape(um[log.actor_user_id]?.username || (log.visitor_key ? `Visitor ${log.visitor_key}` : "-"))}</td>
                 <td>${mgEscape(log.activity_type)}</td>
                 <td>${mgEscape(log.activity_action)}</td>
                 <td>${badge(log.outcome)}</td>
-                <td>${mgEscape(log.reason || "—")}</td>
+                <td>${mgEscape(log.reason || "-")}</td>
                 <td>${mgEscape(target)}</td>
                 <td class="management-code">${mgEscape(details)}</td>
                 <td>${formatDate(log.created_at)}</td>
             </tr>
         `;
-    }).join("") || `<tr><td colspan="9" class="management-empty">No activity logs found.</td></tr>`;
+    }).join("");
 }
 
 async function submitRecordForm(event) {
@@ -952,6 +1214,7 @@ async function submitStaffIssue(event) {
 
 function refreshRenderedData() {
     renderDashboardStats();
+    renderCategoryStats();
     renderUsersTable();
     renderBooksTable();
     renderCategoriesTable();
@@ -1028,8 +1291,27 @@ async function initManagementPage() {
     document.getElementById("management-logout")?.addEventListener("click", logoutManagement);
     document.getElementById("marketplace-link")?.addEventListener("click", goBackToMarketplace);
 
+    // Search and Sort controls
     document.getElementById("users-search")?.addEventListener("input", renderUsersTable);
+    document.getElementById("users-sort")?.addEventListener("change", renderUsersTable);
+    document.getElementById("books-search")?.addEventListener("input", renderBooksTable);
+    document.getElementById("books-sort")?.addEventListener("change", renderBooksTable);
+    document.getElementById("categories-search")?.addEventListener("input", renderCategoriesTable);
+    document.getElementById("categories-sort")?.addEventListener("change", renderCategoriesTable);
+    document.getElementById("listings-search")?.addEventListener("input", renderListingsTable);
+    document.getElementById("listings-sort")?.addEventListener("change", renderListingsTable);
+    document.getElementById("reports-search")?.addEventListener("input", renderReportsTable);
+    document.getElementById("reports-sort")?.addEventListener("change", renderReportsTable);
     document.getElementById("reports-forms-only")?.addEventListener("change", renderReportsTable);
+    document.getElementById("transactions-search")?.addEventListener("input", renderTransactionsTable);
+    document.getElementById("transactions-sort")?.addEventListener("change", renderTransactionsTable);
+    document.getElementById("refunds-search")?.addEventListener("input", renderRefundsTable);
+    document.getElementById("refunds-sort")?.addEventListener("change", renderRefundsTable);
+    document.getElementById("records-search")?.addEventListener("input", renderRecordsTable);
+    document.getElementById("records-sort")?.addEventListener("change", renderRecordsTable);
+    document.getElementById("activity-logs-search")?.addEventListener("input", renderActivityLogsTable);
+    document.getElementById("activity-logs-sort")?.addEventListener("change", renderActivityLogsTable);
+
     document.getElementById("book-form")?.addEventListener("submit", submitBookForm);
     document.getElementById("book-cancel-edit")?.addEventListener("click", resetBookForm);
     document.getElementById("category-form")?.addEventListener("submit", submitCategoryForm);
@@ -1048,7 +1330,7 @@ async function initManagementPage() {
     }
 
     setInterval(async () => {
-        if (!safeToAutoRefresh()) return;      // someone is editing — try again next time
+        if (!safeToAutoRefresh()) return;      // someone is editing - try again next time
         try {
             await reloadCoreData();
             refreshRenderedData();
